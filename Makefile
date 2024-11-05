@@ -64,6 +64,10 @@ delete-postgres: stop-postgres
 		echo "PostgreSQL container does not exist."; \
 	fi
 
+test:
+	@echo "Running end-to-end test..."
+	./make-test.sh --enable-scraping --enable-venv-setup
+
 help:
 	@echo "Usage: make <target>"
 	@echo "Targets:"
@@ -79,3 +83,4 @@ help:
 	@echo "  delete-postgres Delete the PostgreSQL container"
 	@echo "  create-db           Create the PostgreSQL database if it does not exist"
 	@echo "  help         Display this help message"
+	@echo "  test         Run end-to-end test for the entire data pipeline"

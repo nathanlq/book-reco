@@ -20,6 +20,7 @@ The Makefile defines various targets to manage the environment, run tasks, and h
 - `delete-postgres`: Delete the PostgreSQL container.
 - `create-db`: Create the PostgreSQL database if it does not exist.
 - `help`: Display the help message with available targets.
+- `test`: Run end-to-end test for the entire data pipeline.
 
 ### Usage
 
@@ -37,6 +38,7 @@ To use the Makefile, run the following commands in the terminal:
 - `make delete-postgres`: Delete the PostgreSQL container.
 - `make create-db`: Create the PostgreSQL database.
 - `make help`: Display the help message.
+- `make test`: Run end-to-end test for the entire data pipeline.
 
 ## make-test.sh
 
@@ -83,7 +85,3 @@ The Makefile and test script rely on environment variables defined in the `.env`
 - PostgreSQL
 - Scrapy
 - Other dependencies specified in the `requirements.txt` file.
-
-## License
-
-This project is licensed under the MIT License. See the LICENSE file for details.

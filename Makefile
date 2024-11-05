@@ -1,17 +1,7 @@
-PYTHON = python3.11
-SCRAPY = scrapy
-
-PROJECT_DIR = collect/furet_scraper
-DATA_DIR = data
-SCRIPTS_DIR = scripts
-REQUIREMENTS = requirements.txt
-POSTGRES_CONTAINER_NAME = book-reco-postgres
-POSTGRES_PASSWORD = admin
-POSTGRES_VOLUME = $(shell pwd)/$(DATA_DIR)/postgres
-POSTGRES_PORT = 5433
-VENV = venv
-
 .PHONY: all setup run-scrapy compress clean start-postgres stop-postgres delete-postgres help
+
+include .env
+export $(shell sed 's/=.*//' .env)
 
 all: setup run-scrapy compress
 
@@ -28,11 +18,20 @@ compress: setup
 	@echo "Compressing data..."
 	. $(VENV)/bin/activate && $(PYTHON) $(SCRIPTS_DIR)/compress.py && deactivate
 
+prepare: compress
+	@echo "Preparing data..."
+	. $(VENV)/bin/activate && $(PYTHON) $(SCRIPTS_DIR)/prepare.py && deactivate
+
+load: prepare
+	@echo "Loading data into PostgreSQL asynchronously..."
+	. $(VENV)/bin/activate && $(PYTHON) $(SCRIPTS_DIR)/loader.py && deactivate
+
 clean:
-	@echo "Cleaning up the environment..."
+	@echo "Cleaning up the data..."
+	rm -f $(DATA_DIR)/*.parquet
+
+clean-venv:
 	rm -rf $(VENV)
-	rm -f $(DATA_DIR)/raw_output.json
-	rm -f $(DATA_DIR)/raw_data.parquet
 
 start-postgres:
 	@echo "Starting PostgreSQL container..."
@@ -44,6 +43,10 @@ start-postgres:
 	else \
 		docker run --name $(POSTGRES_CONTAINER_NAME) -e POSTGRES_PASSWORD=$(POSTGRES_PASSWORD) -v $(POSTGRES_VOLUME):/var/lib/postgresql/data -p $(POSTGRES_PORT):5432 -d postgres; \
 	fi
+
+create-db:
+	@echo "Creating database..."
+	docker exec -it $(POSTGRES_CONTAINER_NAME) psql -U postgres -c "CREATE DATABASE $(POSTGRES_DB);" || true
 
 stop-postgres:
 	@echo "Stopping PostgreSQL container..."
@@ -68,8 +71,11 @@ help:
 	@echo "  setup        Set up the environment"
 	@echo "  run-scrapy   Run the Scrapy spider"
 	@echo "  compress     Compress the data"
+	@echo "  prepare      Prepare the data after compression"
+	@echo "  load         Load the prepared data into PostgreSQL asynchronously"
 	@echo "  clean        Clean up the environment"
 	@echo "  start-postgres Start the PostgreSQL container"
 	@echo "  stop-postgres Stop the PostgreSQL container"
 	@echo "  delete-postgres Delete the PostgreSQL container"
+	@echo "  create-db           Create the PostgreSQL database if it does not exist"
 	@echo "  help         Display this help message"

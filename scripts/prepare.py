@@ -75,6 +75,10 @@ df['width'] = df['width'].str.replace(',', '.').astype(float)
 df['height'] = df['height'].str.replace(',', '.').astype(float)
 df['depth'] = df['depth'].str.replace(',', '.').astype(float)
 
-df.drop(columns=['dimensions'], inplace=True)
+df = df.rename(columns={'nb._de_pages': 'nb_de_pages'})
+
+df.drop(columns=['dimensions'] + [col for col in df.columns if '_label' in col], inplace=True)
 
 df.to_parquet('data/cleaned_data.parquet')
+
+print(df.columns)

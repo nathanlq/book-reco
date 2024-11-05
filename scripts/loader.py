@@ -2,9 +2,9 @@ import asyncio
 import asyncpg
 import pandas as pd
 import os
-import hashlib
 from dotenv import load_dotenv
-from pandas.io.sql import get_sqltype
+import numpy as np
+import json
 
 load_dotenv()
 
@@ -15,16 +15,76 @@ POSTGRES_PORT = os.getenv('POSTGRES_PORT')
 POSTGRES_DB = os.getenv('POSTGRES_DB')
 TABLE_NAME = os.getenv('TABLE_NAME')
 
-def hash_row(row):
-    """Generate a hash for a row."""
-    row_string = row.to_json()
-    return hashlib.md5(row_string.encode('utf-8')).hexdigest()
+with open('data/schemes/books.json', 'r') as file:
+    schema = json.load(file)
 
-async def load_data_to_postgres():
-    df = pd.read_parquet('data/cleaned_data.parquet')
+TABLE_NAME = schema['table_name']
 
-    df['row_hash'] = df.apply(hash_row, axis=1)
+df = pd.read_parquet('data/cleaned_data.parquet')
 
+data = df.to_dict(orient='records')
+
+for record in data:
+    record['labels'] = json.dumps(record['labels'].tolist())
+    record['date_de_parution'] = int(record['date_de_parution'].timestamp() * 1000)
+    if pd.isna(record['poids']):
+        record['poids'] = None
+    if pd.isna(record['collection']):
+        record['collection'] = None
+    if pd.isna(record['presentation']):
+        record['presentation'] = None
+    if pd.isna(record['format']):
+        record['format'] = None
+
+print("First few records:")
+for i, record in enumerate(data[:5]):
+    print(f"Record {i}: {record}")
+    print(f"Types: {type(record['product_title']), type(record['author']), type(record['resume']), type(record['labels']), type(record['image_url']), type(record['collection']), type(record['date_de_parution']), type(record['ean']), type(record['editeur']), type(record['format']), type(record['isbn']), type(record['nb_de_pages']), type(record['poids']), type(record['presentation']), type(record['width']), type(record['height']), type(record['depth'])}")
+
+async def create_table(conn):
+    columns = ", ".join([f"{col['name']} {col['type']}" for col in schema['columns']])
+    await conn.execute(f"""
+        CREATE TABLE IF NOT EXISTS {TABLE_NAME} (
+            {columns}
+        )
+    """)
+
+async def drop_table(conn):
+    await conn.execute(f"DROP TABLE IF EXISTS {TABLE_NAME}")
+
+async def insert_data(conn, data):
+    async with conn.transaction():
+        for record in data:
+            try:
+                await conn.execute(f"""
+                    INSERT INTO {TABLE_NAME} (
+                        product_title, author, resume, labels, image_url, collection,
+                        date_de_parution, ean, editeur, format, isbn, nb_de_pages,
+                        poids, presentation, width,
+                        height, depth
+                    ) VALUES (
+                        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
+                        $14, $15, $16, $17
+                    )
+                """,
+                    record['product_title'], record['author'], record['resume'],
+                    record['labels'], record['image_url'], record['collection'],
+                    record['date_de_parution'], record['ean'], record['editeur'],
+                    record['format'], record['isbn'], record['nb_de_pages'],
+                    record['poids'], record['presentation'],
+                    record['width'], record['height'], record['depth']
+                )
+            except Exception as e:
+                print(f"Error inserting record: {record}")
+                print(f"Error message: {e}")
+                await conn.execute('ROLLBACK')
+
+async def retrieve_data(conn):
+    rows = await conn.fetch(f"SELECT * FROM {TABLE_NAME} LIMIT 5")
+    for row in rows:
+        print(row)
+
+async def main():
     conn = await asyncpg.connect(
         user=POSTGRES_USER,
         password=POSTGRES_PASSWORD,
@@ -33,32 +93,10 @@ async def load_data_to_postgres():
         database=POSTGRES_DB
     )
 
-    create_table_query = f"""
-    CREATE TABLE IF NOT EXISTS {TABLE_NAME} (
-        row_hash TEXT PRIMARY KEY,
-        {', '.join(f"{col} {get_sqltype(df[col].dtype)}" for col in df.columns if col != 'row_hash')}
-    );
-    """
-    await conn.execute(create_table_query)
-
-    existing_hashes = await conn.fetch(f'SELECT row_hash FROM {TABLE_NAME};')
-    existing_hashes_set = {row['row_hash'] for row in existing_hashes}
-
-    new_rows = df[~df['row_hash'].isin(existing_hashes_set)]
-
-    if not new_rows.empty:
-        async with conn.transaction():
-            await conn.executemany(
-                f"INSERT INTO {TABLE_NAME} VALUES ({', '.join(['$' + str(i+1) for i in range(len(new_rows.columns))])}) "
-                "ON CONFLICT (row_hash) DO NOTHING",
-                new_rows.values.tolist()
-            )
-        print(
-            f"Data successfully loaded into table '{TABLE_NAME}' in the '{POSTGRES_DB}' database.")
-    else:
-        print("No new data to load.")
-
+    await drop_table(conn)
+    await create_table(conn)
+    await insert_data(conn, data)
+    await retrieve_data(conn)
     await conn.close()
 
-if __name__ == "__main__":
-    asyncio.run(load_data_to_postgres())
+asyncio.run(main())

@@ -45,12 +45,20 @@ start-postgres:
 	if [ "$$(docker ps -aq -f name=$(POSTGRES_CONTAINER_NAME))" ]; then \
 		docker start $(POSTGRES_CONTAINER_NAME); \
 	else \
-		docker run --name $(POSTGRES_CONTAINER_NAME) -e POSTGRES_PASSWORD=$(POSTGRES_PASSWORD) -v $(POSTGRES_VOLUME):/var/lib/postgresql/data -p $(POSTGRES_PORT):5432 -d postgres; \
+		docker run --name $(POSTGRES_CONTAINER_NAME) \
+			-e POSTGRES_PASSWORD=$(POSTGRES_PASSWORD) \
+			-v $(POSTGRES_VOLUME):/var/lib/postgresql/data \
+			-p $(POSTGRES_PORT):5432 \
+			-d pgvector/pgvector:pg17; \
+		sleep 5; \
+		docker exec -it $(POSTGRES_CONTAINER_NAME) psql -U postgres -c "CREATE EXTENSION IF NOT EXISTS vector;" \
+		|| echo "pgvector extension setup failed. Ensure pgvector is installed or retry."; \
 	fi
 
-create-db:
-	@echo "Creating database..."
+create-db: start-postgres
+	@echo "Creating database and enabling pgvector extension..."
 	docker exec -it $(POSTGRES_CONTAINER_NAME) psql -U postgres -c "CREATE DATABASE $(POSTGRES_DB);" || true
+	docker exec -it $(POSTGRES_CONTAINER_NAME) psql -U postgres -d $(POSTGRES_DB) -c "CREATE EXTENSION IF NOT EXISTS vector;"
 
 stop-postgres:
 	@echo "Stopping PostgreSQL container..."

@@ -44,6 +44,7 @@ for record in data:
             record[field] = None
 
 async def create_table(conn):
+    await conn.execute("CREATE EXTENSION IF NOT EXISTS vector;")
     columns = ", ".join([f"{col['name']} {col['type']}" for col in schema['columns']])
     await conn.execute(f"""
         CREATE TABLE IF NOT EXISTS {TABLE_NAME} (
@@ -82,6 +83,8 @@ async def insert_data(conn, data):
 
 async def retrieve_data(conn):
     rows = await conn.fetch(f"SELECT * FROM {TABLE_NAME} LIMIT 5")
+    for row in rows:
+        print(row)
     print("Retrieve OK.")
 
 async def main():

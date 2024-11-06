@@ -1,0 +1,23 @@
+{
+    "columns": [
+        {"name": "id", "type": "TEXT PRIMARY KEY"},
+        {"name": "product_title", "type": "TEXT"},
+        {"name": "author", "type": "TEXT"},
+        {"name": "resume", "type": "TEXT"},
+        {"name": "labels", "type": "JSON"},
+        {"name": "image_url", "type": "TEXT"},
+        {"name": "collection", "type": "TEXT"},
+        {"name": "date_de_parution", "type": "BIGINT"},
+        {"name": "ean", "type": "BIGINT"},
+        {"name": "editeur", "type": "TEXT"},
+        {"name": "format", "type": "TEXT"},
+        {"name": "isbn", "type": "TEXT"},
+        {"name": "nb_de_pages", "type": "INT"},
+        {"name": "poids", "type": "DECIMAL(5, 3)"},
+        {"name": "presentation", "type": "TEXT"},
+        {"name": "width", "type": "DECIMAL(5, 2)"},
+        {"name": "height", "type": "DECIMAL(5, 2)"},
+        {"name": "depth", "type": "DECIMAL(5, 2)"},
+        {"name": "embedding", "type": "VECTOR(6136)"}
+    ]
+}

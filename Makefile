@@ -12,6 +12,10 @@ setup:
 
 run-scrapy: setup
 	@echo "Running Scrapy spider..."
+	if [ -f $(DATA_DIR)/raw_output.json ]; then \
+		echo "Deleting existing raw_output.json..."; \
+		rm $(DATA_DIR)/raw_output.json; \
+	fi
 	. $(VENV)/bin/activate && cd $(PROJECT_DIR) && $(SCRAPY) crawl furet -o ../../$(DATA_DIR)/raw_output.json && deactivate
 
 compress: setup

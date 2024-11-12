@@ -18,6 +18,7 @@
         {"name": "width", "type": "DECIMAL(5, 2)"},
         {"name": "height", "type": "DECIMAL(5, 2)"},
         {"name": "depth", "type": "DECIMAL(5, 2)"},
-        {"name": "embedding", "type": "VECTOR(6136)"}
+        {"name": "embedding", "type": "VECTOR(128)"},
+        {"name": "tfidf", "type": "VECTOR(2048)"}
     ]
 }

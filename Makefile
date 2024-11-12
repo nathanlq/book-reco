@@ -34,6 +34,10 @@ clean:
 	@echo "Cleaning up the data..."
 	rm -f $(DATA_DIR)/*.parquet
 
+run-microservice: setup
+	@echo "Running microservice..."
+	. $(VENV)/bin/activate && $(PYTHON) -m scripts.microservice && deactivate
+
 clean-venv:
 	rm -rf $(VENV)
 
@@ -94,5 +98,6 @@ help:
 	@echo "  stop-postgres Stop the PostgreSQL container"
 	@echo "  delete-postgres Delete the PostgreSQL container"
 	@echo "  create-db           Create the PostgreSQL database if it does not exist"
+	@echo "  run-microservice    Run the microservice"
 	@echo "  help         Display this help message"
 	@echo "  test         Run end-to-end test for the entire data pipeline"

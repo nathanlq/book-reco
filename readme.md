@@ -19,6 +19,7 @@ The Makefile defines various targets to manage the environment, run tasks, and h
 - `stop-postgres`: Stop the PostgreSQL container.
 - `delete-postgres`: Delete the PostgreSQL container.
 - `create-db`: Create the PostgreSQL database if it does not exist.
+- `run-microservice`: Run the microservice.
 - `help`: Display the help message with available targets.
 - `test`: Run end-to-end test for the entire data pipeline.
 
@@ -37,6 +38,7 @@ To use the Makefile, run the following commands in the terminal:
 - `make stop-postgres`: Stop the PostgreSQL container.
 - `make delete-postgres`: Delete the PostgreSQL container.
 - `make create-db`: Create the PostgreSQL database.
+- `make run-microservice`: Run the microservice.
 - `make help`: Display the help message.
 - `make test`: Run end-to-end test for the entire data pipeline.
 

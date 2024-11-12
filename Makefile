@@ -36,7 +36,7 @@ clean:
 
 run-microservice: setup
 	@echo "Running microservice..."
-	. $(VENV)/bin/activate && $(PYTHON) -m scripts.microservice && deactivate
+	. $(VENV)/bin/activate && $(PYTHON) -m store.microservice && deactivate
 
 clean-venv:
 	rm -rf $(VENV)
@@ -86,18 +86,19 @@ test:
 
 help:
 	@echo "Usage: make <target>"
+	@echo ""
 	@echo "Targets:"
-	@echo "  all          Run all tasks (setup, run-scrapy, compress)"
-	@echo "  setup        Set up the environment"
-	@echo "  run-scrapy   Run the Scrapy spider"
-	@echo "  compress     Compress the data"
-	@echo "  prepare      Prepare the data after compression"
-	@echo "  load         Load the prepared data into PostgreSQL asynchronously"
-	@echo "  clean        Clean up the environment"
-	@echo "  start-postgres Start the PostgreSQL container"
-	@echo "  stop-postgres Stop the PostgreSQL container"
-	@echo "  delete-postgres Delete the PostgreSQL container"
-	@echo "  create-db           Create the PostgreSQL database if it does not exist"
-	@echo "  run-microservice    Run the microservice"
-	@echo "  help         Display this help message"
-	@echo "  test         Run end-to-end test for the entire data pipeline"
+	@echo "  all                  Run all tasks (setup, run-scrapy, compress)"
+	@echo "  setup                Set up the environment"
+	@echo "  run-scrapy           Run the Scrapy spider"
+	@echo "  compress             Compress the data"
+	@echo "  prepare              Prepare the data after compression"
+	@echo "  load                 Load the prepared data into PostgreSQL asynchronously"
+	@echo "  clean                Clean up the environment"
+	@echo "  start-postgres       Start the PostgreSQL container"
+	@echo "  stop-postgres        Stop the PostgreSQL container"
+	@echo "  delete-postgres      Delete the PostgreSQL container"
+	@echo "  create-db            Create the PostgreSQL database if it does not exist"
+	@echo "  run-microservice     Run the microservice for vectorisation"
+	@echo "  help                 Display this help message"
+	@echo "  test                 Run end-to-end test for the entire data pipeline"

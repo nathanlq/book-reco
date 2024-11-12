@@ -4,3 +4,4 @@ data/*.parquet
 notebook/.ipynb_checkpoints/
 scripts/__pycache__/
 scripts/utils/__pycache__/
+**__pycache__/

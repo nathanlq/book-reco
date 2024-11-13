@@ -9,7 +9,7 @@ from mlflow.types.schema import Schema, ColSpec
 from common.setup_mlflow_autolog import setup_mlflow_autolog
 from datetime import datetime
 
-setup_mlflow_autolog()
+setup_mlflow_autolog(experiment_name="compress_prepare_load")
 
 tqdm.pandas(desc="Processing")
 

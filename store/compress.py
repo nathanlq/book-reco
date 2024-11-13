@@ -4,7 +4,7 @@ import mlflow.sklearn
 from common.setup_mlflow_autolog import setup_mlflow_autolog
 from datetime import datetime
 
-setup_mlflow_autolog()
+setup_mlflow_autolog(experiment_name="compress_prepare_load")
 
 start_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 

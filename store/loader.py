@@ -11,7 +11,7 @@ import mlflow
 import mlflow.sklearn
 from common.setup_mlflow_autolog import setup_mlflow_autolog
 
-setup_mlflow_autolog()
+setup_mlflow_autolog(experiment_name="compress_prepare_load")
 
 load_dotenv()
 

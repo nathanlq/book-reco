@@ -1,6 +1,8 @@
 import asyncio
 import asyncpg
 import os
+import mlflow
+from common.setup_mlflow_autolog import setup_mlflow_autolog
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from tqdm.asyncio import tqdm
@@ -15,6 +17,8 @@ POSTGRES_PORT = os.getenv('POSTGRES_PORT')
 POSTGRES_DB = os.getenv('POSTGRES_DB')
 TABLE_NAME = os.getenv('TABLE_NAME')
 
+setup_mlflow_autolog(experiment_name="vectorizer_monitoring")
+
 
 async def reconnect():
     return await asyncpg.connect(
@@ -27,34 +31,51 @@ async def reconnect():
 
 
 async def update_combined_vectors(conn, recalculate_all=False):
-    print("Fetching rows to update vectors...")
-    query = f"SELECT * FROM {TABLE_NAME}"
-    if not recalculate_all:
-        query += " WHERE embedding IS NULL OR tfidf IS NULL"
+    start_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    with mlflow.start_run(run_name="update_combined_vectors_run"):
+        print("Fetching rows to update vectors...")
+        query = f"SELECT * FROM {TABLE_NAME}"
+        if not recalculate_all:
+            query += " WHERE embedding IS NULL OR tfidf IS NULL"
 
-    rows = await conn.fetch(query)
-    if not rows:
-        print("Nothing to calculate.")
-        return
-    print(f"Fetched {len(rows)} rows for processing.")
+        rows = await conn.fetch(query)
+        if not rows:
+            print("Nothing to calculate.")
+            mlflow.log_param("num_rows", 0)
 
-    batch_size = 100
-    updates = []
+            end_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-    for row in tqdm(rows, desc="Processing rows", unit="row"):
-        embedding_vector, tfidf_vector = generate_vectors_for_row(row)
+            mlflow.log_param("start_time", start_time)
+            mlflow.log_param("end_time", end_time)
+            mlflow.log_param("recalculate_all", recalculate_all)
+            return
+        print(f"Fetched {len(rows)} rows for processing.")
 
-        embedding_vector_str = '[' + ','.join(map(str, embedding_vector)) + ']'
-        tfidf_vector_str = '[' + ','.join(map(str, tfidf_vector)) + ']'
+        batch_size = 100
+        updates = []
 
-        updates.append((embedding_vector_str, tfidf_vector_str, row['id']))
+        for row in tqdm(rows, desc="Processing rows", unit="row"):
+            embedding_vector, tfidf_vector = generate_vectors_for_row(row)
 
-        if len(updates) >= batch_size:
+            embedding_vector_str = '[' + \
+                ','.join(map(str, embedding_vector)) + ']'
+            tfidf_vector_str = '[' + ','.join(map(str, tfidf_vector)) + ']'
+
+            updates.append((embedding_vector_str, tfidf_vector_str, row['id']))
+
+            if len(updates) >= batch_size:
+                await execute_batch_updates(conn, updates)
+                updates = []
+
+        if updates:
             await execute_batch_updates(conn, updates)
-            updates = []
 
-    if updates:
-        await execute_batch_updates(conn, updates)
+        end_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+        mlflow.log_param("start_time", start_time)
+        mlflow.log_param("end_time", end_time)
+        mlflow.log_param("num_rows", len(rows))
+        mlflow.log_param("recalculate_all", recalculate_all)
 
 
 async def execute_batch_updates(conn, updates):

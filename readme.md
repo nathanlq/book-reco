@@ -16,6 +16,10 @@ This section includes the flow and structure of the pipeline as visualized in th
 - **Database Storage**: Stores books in a PostgreSQL database using the `pgvector` extension for efficient similarity queries.
 - **API & Microservices**: Provides API endpoints for book retrieval and similarity search, along with daily and dynamic vector recalculations.
 
+Here is target architecture, simplified in practice because it's only a POC :
+
+![Architecture](ressources/BigData.png "Target Architecture")
+
 ### 3. Modules Overview
 
 #### `microservices`
@@ -121,3 +125,7 @@ To set up the environment, cf `readme-makefile`. Environment variables are locat
 ### 8. Testing
 
 For testing, utilize the make-test.sh script. This script automates testing across the different modules and verifies end-to-end functionality. For now, only the module `collect` and `store` can be tested. See the Makefile readme for available testing flags.
+
+## Ressources
+
+- [`pgvector`](https://github.com/pgvector/pgvector)

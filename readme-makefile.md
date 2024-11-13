@@ -85,7 +85,3 @@ The Makefile and test script rely on environment variables defined in the `.env`
 - PostgreSQL
 - Scrapy
 - Other dependencies specified in the `requirements.txt` file.
-
-## Ressources
-
-- Documentation [pgvector](https://github.com/pgvector/pgvector)

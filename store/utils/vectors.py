@@ -35,6 +35,7 @@ if os.path.exists(TFIDF_MODEL_PATH):
 else:
     print("TF-IDF vectorizer not found; will train when needed.")
 
+
 async def initialize_pca_model(conn, table_name):
     global pca
     if os.path.exists(PCA_MODEL_PATH):
@@ -63,6 +64,7 @@ async def initialize_pca_model(conn, table_name):
         joblib.dump(pca, PCA_MODEL_PATH)
         print("PCA model trained with a batch of data and saved to disk.")
 
+
 async def initialize_tfidf_model(conn, table_name):
     global tfidf_vectorizer
     if os.path.exists(TFIDF_MODEL_PATH):
@@ -78,7 +80,8 @@ async def initialize_tfidf_model(conn, table_name):
             print("No data found for TF-IDF initialization.")
             return
 
-        combined_texts = [f"{row['resume']} {row['product_title']}".strip() for row in rows]
+        combined_texts = [
+            f"{row['resume']} {row['product_title']}".strip() for row in rows]
 
         tfidf_vectorizer = TfidfVectorizer(
             stop_words=french_stop_words, max_features=2048)
@@ -92,7 +95,9 @@ async def initialize_tfidf_model(conn, table_name):
     if len(tfidf_vectorizer.get_feature_names_out()) == 2048:
         print("TF-IDF vectorizer has the correct number of features.")
     else:
-        print(f"Warning: TF-IDF vectorizer has {len(tfidf_vectorizer.get_feature_names_out())} features, expected 2048.")
+        print(
+            f"Warning: TF-IDF vectorizer has {len(tfidf_vectorizer.get_feature_names_out())} features, expected 2048.")
+
 
 def get_embedding(text, max_length=512, apply_pca=True):
     inputs = tokenizer(text, return_tensors='pt',
@@ -115,13 +120,16 @@ def get_embedding(text, max_length=512, apply_pca=True):
 
     return embedding.flatten()
 
+
 def generate_tfidf_vector(column):
     if not hasattr(tfidf_vectorizer, 'vocabulary_'):
-        raise RuntimeError("TF-IDF vectorizer is not fitted. Please run initialize_tfidf_model first.")
+        raise RuntimeError(
+            "TF-IDF vectorizer is not fitted. Please run initialize_tfidf_model first.")
 
     tfidf_matrix = tfidf_vectorizer.transform(column)
     tfidf_vector = tfidf_matrix.toarray()[0]
     return tfidf_vector
+
 
 def generate_vectors_for_row(row):
     embedding_text = f"{row['resume']} {row['product_title']}".strip()
@@ -129,6 +137,7 @@ def generate_vectors_for_row(row):
     combined_text = [row['resume'], row['product_title']]
     tfidf_vector = generate_tfidf_vector(combined_text)
     return embedding_vector, tfidf_vector
+
 
 async def retrain_tfidf_model(conn, table_name):
     print("Starting TF-IDF retraining with full dataset from database.")
@@ -142,6 +151,7 @@ async def retrain_tfidf_model(conn, table_name):
     tfidf_vectorizer.fit(combined_text)
     joblib.dump(tfidf_vectorizer, TFIDF_MODEL_PATH)
     print("TF-IDF model retrained with the latest data and saved to disk.")
+
 
 async def retrain_pca_model(conn, table_name):
     print("Starting PCA retraining with full dataset from database.")

@@ -4,7 +4,7 @@
         {"name": "product_title", "type": "TEXT"},
         {"name": "author", "type": "TEXT"},
         {"name": "resume", "type": "TEXT"},
-        {"name": "labels", "type": "JSON"},
+        {"name": "labels", "type": "JSONB"},
         {"name": "image_url", "type": "TEXT"},
         {"name": "collection", "type": "TEXT"},
         {"name": "date_de_parution", "type": "DATE"},

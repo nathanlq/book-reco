@@ -45,16 +45,21 @@ for record in data:
         if pd.isna(record[field]):
             record[field] = None
 
+async def table_exists(conn):
+    result = await conn.fetchval(f"SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = '{TABLE_NAME}')")
+    return result
+
 
 async def create_table(conn):
-    await conn.execute("CREATE EXTENSION IF NOT EXISTS vector;")
-    columns = ", ".join(
-        [f"{col['name']} {col['type']}" for col in schema['columns']])
-    await conn.execute(f"""
-        CREATE TABLE IF NOT EXISTS {TABLE_NAME} (
-            {columns}
-        )
-    """)
+    if not await table_exists(conn):
+        await conn.execute("CREATE EXTENSION IF NOT EXISTS vector;")
+        columns = ", ".join(
+            [f"{col['name']} {col['type']}" for col in schema['columns']])
+        await conn.execute(f"""
+            CREATE TABLE IF NOT EXISTS {TABLE_NAME} (
+                {columns}
+            )
+        """)
 
 
 async def drop_table(conn):
@@ -95,7 +100,7 @@ async def retrieve_data(conn):
     print("Retrieve OK.")
 
 
-async def main():
+async def main(drop_flag=False):
     conn = await asyncpg.connect(
         user=POSTGRES_USER,
         password=POSTGRES_PASSWORD,
@@ -104,10 +109,21 @@ async def main():
         database=POSTGRES_DB
     )
 
-    await drop_table(conn)
+    if drop_flag:
+        await drop_table(conn)
+
     await create_table(conn)
     await insert_data(conn, data)
     await retrieve_data(conn)
     await conn.close()
 
-asyncio.run(main())
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Loader script with optional table drop.")
+    parser.add_argument("--drop", action="store_true", help="Drop the table before recreating it.")
+
+    args = parser.parse_args()
+
+    asyncio.run(main(args.drop))

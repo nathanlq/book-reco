@@ -1,4 +1,4 @@
-# Store
+# Store Module Documentation
 
 The `store` module is responsible for processing, transforming, and storing the book data scraped by the `FuretSpider`. The module includes scripts for data cleaning and preparation, compressing data into efficient formats, loading data into a database, and performing basic database testing.
 
@@ -9,11 +9,8 @@ The `store` module contains the following scripts:
 1. `compress.py`
 2. `prepare.py`
 3. `loader.py`
-4. `test.py`
 
-Each script has a specific role in the data pipeline, from initial data compression to loading into the database and verifying the records.
-
----
+Each script has a specific role in the data pipeline, from initial data compression to loading into the database.
 
 ### `compress.py`
 

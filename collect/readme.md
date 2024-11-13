@@ -1,4 +1,4 @@
-# Collect
+# Collect Module Documentation
 
 For now the `collect` is only using base scrapy with a custom spyder, `FuretSpider`, the code can be found at `collect/furet_scraper/spiders/furet_spider.py`
 

@@ -7,7 +7,7 @@
         {"name": "labels", "type": "JSON"},
         {"name": "image_url", "type": "TEXT"},
         {"name": "collection", "type": "TEXT"},
-        {"name": "date_de_parution", "type": "BIGINT"},
+        {"name": "date_de_parution", "type": "DATE"},
         {"name": "ean", "type": "BIGINT"},
         {"name": "editeur", "type": "TEXT"},
         {"name": "format", "type": "TEXT"},

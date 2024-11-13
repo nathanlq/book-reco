@@ -1,111 +1,88 @@
 from fastapi import APIRouter, Query
-from typing import List, Optional, Any
+from typing import List, Optional
 from expose.models import Book
 from expose.database import get_db_connection
 from expose.config import TABLE_NAME
 
-
 router = APIRouter()
 
-@router.get("/books", response_model=List[Any]) # List[Book])
+
+@router.get("/books", response_model=List[Book])
 async def get_books(
     id: Optional[str] = Query(None, description="Filter by ID"),
-    product_title: Optional[str] = Query(None, description="Filter by product title"),
+    product_title: Optional[str] = Query(
+        None, description="Filter by product title"),
     author: Optional[str] = Query(None, description="Filter by author"),
     resume: Optional[str] = Query(None, description="Filter by resume"),
-    labels: Optional[str] = Query(None, description="Filter by labels (comma-separated)"),
+    labels: Optional[str] = Query(
+        None, description="Filter by labels (comma-separated)"),
     image_url: Optional[str] = Query(None, description="Filter by image URL"),
-    collection: Optional[str] = Query(None, description="Filter by collection"),
-    date_de_parution: Optional[int] = Query(None, description="Filter by date de parution"),
+    collection: Optional[str] = Query(
+        None, description="Filter by collection"),
+    date_de_parution: Optional[int] = Query(
+        None, description="Filter by date de parution"),
     ean: Optional[int] = Query(None, description="Filter by EAN"),
     editeur: Optional[str] = Query(None, description="Filter by editor"),
     format: Optional[str] = Query(None, description="Filter by format"),
     isbn: Optional[str] = Query(None, description="Filter by ISBN"),
-    nb_de_pages: Optional[int] = Query(None, description="Filter by number of pages"),
+    nb_de_pages: Optional[int] = Query(
+        None, description="Filter by number of pages"),
     poids: Optional[float] = Query(None, description="Filter by weight"),
-    presentation: Optional[str] = Query(None, description="Filter by presentation"),
+    presentation: Optional[str] = Query(
+        None, description="Filter by presentation"),
     width: Optional[float] = Query(None, description="Filter by width"),
     height: Optional[float] = Query(None, description="Filter by height"),
-    depth: Optional[float] = Query(None, description="Filter by depth")
+    depth: Optional[float] = Query(None, description="Filter by depth"),
+    page: Optional[int] = Query(1, description="Page number"),
+    page_size: Optional[int] = Query(
+        10, description="Number of items per page")
 ):
     conn = await get_db_connection()
 
-    query = f"SELECT * FROM {TABLE_NAME} WHERE 1=1"
+    query = f"SELECT * FROM {TABLE_NAME}"
     params = []
+    conditions = []
 
-    if id:
-        query += " AND id = $1"
-        params.append(id)
+    filters = {
+        "id": id,
+        "product_title": product_title,
+        "author": author,
+        "resume": resume,
+        "image_url": image_url,
+        "collection": collection,
+        "date_de_parution": date_de_parution,
+        "ean": ean,
+        "editeur": editeur,
+        "format": format,
+        "isbn": isbn,
+        "nb_de_pages": nb_de_pages,
+        "poids": poids,
+        "presentation": presentation,
+        "width": width,
+        "height": height,
+        "depth": depth,
+    }
 
-    if product_title:
-        query += " AND product_title = $2"
-        params.append(product_title)
-
-    if author:
-        query += " AND author = $3"
-        params.append(author)
-
-    if resume:
-        query += " AND resume = $4"
-        params.append(resume)
+    for column, value in filters.items():
+        if value is not None:
+            conditions.append(f"{column} = ${len(params) + 1}")
+            params.append(value)
 
     if labels:
         label_list = labels.split(',')
         for idx, label in enumerate(label_list, start=len(params) + 1):
-            query += f" AND labels @> $${idx}"
+            conditions.append(f"labels @> $${idx}")
             params.append({label})
 
-    if image_url:
-        query += f" AND image_url = ${len(params) + 1}"
-        params.append(image_url)
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
 
-    if collection:
-        query += f" AND collection = ${len(params) + 1}"
-        params.append(collection)
+    offset = (page - 1) * page_size
+    query += f" LIMIT ${len(params) + 1} OFFSET ${len(params) + 2}"
+    params.append(page_size)
+    params.append(offset)
 
-    if date_de_parution:
-        query += f" AND date_de_parution = ${len(params) + 1}"
-        params.append(date_de_parution)
-
-    if ean:
-        query += f" AND ean = ${len(params) + 1}"
-        params.append(ean)
-
-    if editeur:
-        query += f" AND editeur = ${len(params) + 1}"
-        params.append(editeur)
-
-    if format:
-        query += f" AND format = ${len(params) + 1}"
-        params.append(format)
-
-    if isbn:
-        query += f" AND isbn = ${len(params) + 1}"
-        params.append(isbn)
-
-    if nb_de_pages:
-        query += f" AND nb_de_pages = ${len(params) + 1}"
-        params.append(nb_de_pages)
-
-    if poids:
-        query += f" AND poids = ${len(params) + 1}"
-        params.append(poids)
-
-    if presentation:
-        query += f" AND presentation = ${len(params) + 1}"
-        params.append(presentation)
-
-    if width:
-        query += f" AND width = ${len(params) + 1}"
-        params.append(width)
-
-    if height:
-        query += f" AND height = ${len(params) + 1}"
-        params.append(height)
-
-    if depth:
-        query += f" AND depth = ${len(params) + 1}"
-        params.append(depth)
+    print(f"Execute query : {query}")
 
     rows = await conn.fetch(query, *params)
 
@@ -113,25 +90,23 @@ async def get_books(
     for row in rows:
         book_data = {
             "id": row['id'],
-            "product_title": row['product_title'],
-            "author": row['author'],
-            "resume": row['resume'],
-            "labels": row['labels'],
-            "image_url": row['image_url'],
-            "collection": row['collection'],
-            "date_de_parution": row['date_de_parution'],
-            "ean": row['ean'],
-            "editeur": row['editeur'],
-            "format": row['format'],
-            "isbn": row['isbn'],
-            "nb_de_pages": row['nb_de_pages'],
-            "poids": row['poids'],
-            "presentation": row['presentation'],
-            "width": row['width'],
-            "height": row['height'],
-            "depth": row['depth'],
-            "embedding": row['embedding'],
-            "tfidf": row['tfidf']
+            "product_title": row.get('product_title'),
+            "author": row.get('author'),
+            "resume": row.get('resume'),
+            "labels": eval(row.get('labels', '[]')),
+            "image_url": row.get('image_url'),
+            "collection": row.get('collection'),
+            "date_de_parution": str(row['date_de_parution']) if row.get('date_de_parution') is not None else '',
+            "ean": row.get('ean'),
+            "editeur": row.get('editeur'),
+            "format": row.get('format'),
+            "isbn": row.get('isbn'),
+            "nb_de_pages": row.get('nb_de_pages'),
+            "poids": float(row['poids']) if row.get('poids') is not None and -1e308 < float(row['poids']) < 1e308 else None,
+            "presentation": row.get('presentation'),
+            "width": float(row['width']) if row.get('width') is not None and -1e308 < float(row['width']) < 1e308 else None,
+            "height": float(row['height']) if row.get('height') is not None and -1e308 < float(row['height']) < 1e308 else None,
+            "depth": float(row['depth']) if row.get('depth') is not None and -1e308 < float(row['depth']) < 1e308 else None,
         }
         books.append(book_data)
 

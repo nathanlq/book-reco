@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 import numpy as np
 import json
 import hashlib
+from datetime import datetime
 
 load_dotenv()
 
@@ -36,24 +37,29 @@ for record in data:
     record['id'] = hashlib.sha256(record_str).hexdigest()
 
     record['labels'] = json.dumps(record['labels'].tolist())
-    
-    record['date_de_parution'] = int(record['date_de_parution'].timestamp() * 1000)
+
+    if isinstance(record['date_de_parution'], datetime):
+        record['date_de_parution'] = record['date_de_parution']
 
     for field in ['poids', 'collection', 'presentation', 'format']:
         if pd.isna(record[field]):
             record[field] = None
 
+
 async def create_table(conn):
     await conn.execute("CREATE EXTENSION IF NOT EXISTS vector;")
-    columns = ", ".join([f"{col['name']} {col['type']}" for col in schema['columns']])
+    columns = ", ".join(
+        [f"{col['name']} {col['type']}" for col in schema['columns']])
     await conn.execute(f"""
         CREATE TABLE IF NOT EXISTS {TABLE_NAME} (
             {columns}
         )
     """)
 
+
 async def drop_table(conn):
     await conn.execute(f"DROP TABLE IF EXISTS {TABLE_NAME}")
+
 
 async def insert_data(conn, data):
     async with conn.transaction():
@@ -70,22 +76,24 @@ async def insert_data(conn, data):
                     )
                     ON CONFLICT (id) DO NOTHING
                 """,
-                    record['id'], record['product_title'], record['author'],
-                    record['resume'], record['labels'], record['image_url'],
-                    record['collection'], record['date_de_parution'], record['ean'],
-                    record['editeur'], record['format'], record['isbn'],
-                    record['nb_de_pages'], record['poids'], record['presentation'],
-                    record['width'], record['height'], record['depth']
-                )
+                                   record['id'], record['product_title'], record['author'],
+                                   record['resume'], record['labels'], record['image_url'],
+                                   record['collection'], record['date_de_parution'], record['ean'],
+                                   record['editeur'], record['format'], record['isbn'],
+                                   record['nb_de_pages'], record['poids'], record['presentation'],
+                                   record['width'], record['height'], record['depth']
+                                   )
             except Exception as e:
                 print(f"Error inserting record: {record}")
                 print(f"Error message: {e}")
+
 
 async def retrieve_data(conn):
     rows = await conn.fetch(f"SELECT * FROM {TABLE_NAME} LIMIT 5")
     for row in rows:
         print(row)
     print("Retrieve OK.")
+
 
 async def main():
     conn = await asyncpg.connect(

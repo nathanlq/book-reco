@@ -7,10 +7,10 @@ class Book(BaseModel):
     product_title: Optional[str] = None
     author: Optional[str] = None
     resume: Optional[str] = None
-    labels: Optional[dict] = None
+    labels: Optional[List[str]] = None
     image_url: Optional[str] = None
     collection: Optional[str] = None
-    date_de_parution: Optional[int] = None
+    date_de_parution: Optional[str] = None 
     ean: Optional[int] = None
     editeur: Optional[str] = None
     format: Optional[str] = None
@@ -21,5 +21,3 @@ class Book(BaseModel):
     width: Optional[float] = None
     height: Optional[float] = None
     depth: Optional[float] = None
-    embedding: Optional[List[float]] = None
-    tfidf: Optional[List[float]] = None

@@ -4,7 +4,7 @@ import os
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from tqdm.asyncio import tqdm
-from store.utils.vectors import generate_vectors_for_row, retrain_tfidf_model, initialize_pca_model, initialize_tfidf_model
+from microservices.utils.vectors import generate_vectors_for_row, retrain_tfidf_model, initialize_pca_model, initialize_tfidf_model
 
 load_dotenv()
 

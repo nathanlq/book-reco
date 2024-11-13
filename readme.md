@@ -1,93 +1,123 @@
-# README
+## Project Documentation
 
-This repository contains a Makefile and a test script (make-test.sh) to automate the setup, execution, and testing of a data pipeline.
+### 1. Project Overview
+The project is a data processing pipeline designed to scrape book data from an online bookstore, transform and load it into a PostgreSQL database, and expose it via a FastAPI-based API. The pipeline includes:
 
-## Makefile
+- **Data Collection**: Scrapes book details with Scrapy.
+- **Data Processing**: Cleans and formats the scraped data, compresses it, and loads it into a database.
+- **API Exposure**: Provides endpoints to retrieve book information and similar books based on embeddings calculated using BERT and TF-IDF.
 
-The Makefile defines various targets to manage the environment, run tasks, and handle PostgreSQL operations.
+### 2. System Architecture
+This section includes the flow and structure of the pipeline as visualized in the architecture diagram (refer to `BigData.png`):
 
-### Targets
+- **Crawler & Scrapers**: Collect data from the target website.
+- **Data Processing**: Cleans and formats the data into the appropriate schema.
+- **Vectorization**: Converts text data to embeddings using CamemBERT and calculates TF-IDF vectors.
+- **Database Storage**: Stores books in a PostgreSQL database using the `pgvector` extension for efficient similarity queries.
+- **API & Microservices**: Provides API endpoints for book retrieval and similarity search, along with daily and dynamic vector recalculations.
 
-- `all`: Run all tasks (setup, run-scrapy, compress).
-- `setup`: Set up the environment by creating a virtual environment and installing dependencies.
-- `run-scrapy`: Run the Scrapy spider to collect data.
-- `compress`: Compress the collected data.
-- `prepare`: Prepare the data after compression.
-- `load`: Load the prepared data into PostgreSQL asynchronously.
-- `clean`: Clean up the environment by removing the virtual environment and data files.
-- `start-postgres`: Start the PostgreSQL container.
-- `stop-postgres`: Stop the PostgreSQL container.
-- `delete-postgres`: Delete the PostgreSQL container.
-- `create-db`: Create the PostgreSQL database if it does not exist.
-- `run-microservice`: Run the microservice.
-- `help`: Display the help message with available targets.
-- `test`: Run end-to-end test for the entire data pipeline.
+### 3. Modules Overview
 
-### Usage
+#### `microservices`
+A microservice module responsible for calculating text embeddings and TF-IDF vectors for each book in the database. This module performs:
 
-To use the Makefile, run the following commands in the terminal:
+- **Daily Vector Recalculation**: Runs every day at 1 a.m., updating embeddings and TF-IDF vectors for all books.
+- **Embedding Calculations**: Uses BERT-based embeddings stored as vectors for similarity queries.
+  
+#### `collect`
+Uses Scrapy to scrape book details from the website. The scraped data is output in JSON format for further processing.
 
-- `make all`: Run all tasks.
-- `make setup`: Set up the environment.
-- `make run-scrapy`: Run the Scrapy spider.
-- `make compress`: Compress the data.
-- `make prepare`: Prepare the data.
-- `make load`: Load the data into PostgreSQL.
-- `make clean`: Clean up the environment.
-- `make start-postgres`: Start the PostgreSQL container.
-- `make stop-postgres`: Stop the PostgreSQL container.
-- `make delete-postgres`: Delete the PostgreSQL container.
-- `make create-db`: Create the PostgreSQL database.
-- `make run-microservice`: Run the microservice.
-- `make help`: Display the help message.
-- `make test`: Run end-to-end test for the entire data pipeline.
+#### `store`
+Handles data transformation and loading tasks, with three main scripts:
 
-## make-test.sh
+- **`compress.py`**: Converts the JSON output from Scrapy into Parquet format, a compressed, columnar storage format.
+- **`prepare.py`**: Cleans and processes data to ensure consistent data types, handling missing values, and performing any necessary formatting.
+- **`loader.py`**: Loads cleaned data into a PostgreSQL database, adhering to the schema specified in `book.json` (described below).
 
-The `make-test.sh` script automates the end-to-end testing of the data pipeline. It performs the following steps:
+#### `expose`
+A FastAPI-based module that provides RESTful API endpoints. Key endpoints include:
 
-1. Set up the environment (optional).
-2. Start the PostgreSQL container.
-3. Check if the PostgreSQL container is running.
-4. Test the PostgreSQL connection.
-5. Create the PostgreSQL database.
-6. Run the Scrapy spider (optional).
-7. Compress the data.
-8. Prepare the data.
-9. Load the data into PostgreSQL.
-10. Verify the data in PostgreSQL.
-11. Clean up the environment.
+- **GET /books**: Retrieve books with various filtering options (title, author, date, etc.).
+- **GET /books/{book_id}/similar**: Retrieve books similar to a given book based on its embeddings, with optional filters on categorical fields (author, collection, editor, etc.).
 
-### Flags
+### 4. Database Schema
+The database schema, defined in `book.json`, structures book data to support filtering and vector-based similarity search:
 
-- `--enable-scraping`: Enable the Scrapy spider step.
-- `--enable-venv-setup`: Enable the virtual environment setup step.
+```json
+{
+    "columns": [
+        {"name": "id", "type": "TEXT PRIMARY KEY"},
+        {"name": "product_title", "type": "TEXT"},
+        {"name": "author", "type": "TEXT"},
+        {"name": "resume", "type": "TEXT"},
+        {"name": "labels", "type": "JSONB"},
+        {"name": "image_url", "type": "TEXT"},
+        {"name": "collection", "type": "TEXT"},
+        {"name": "date_de_parution", "type": "DATE"},
+        {"name": "ean", "type": "BIGINT"},
+        {"name": "editeur", "type": "TEXT"},
+        {"name": "format", "type": "TEXT"},
+        {"name": "isbn", "type": "TEXT"},
+        {"name": "nb_de_pages", "type": "INT"},
+        {"name": "poids", "type": "DECIMAL(5, 3)"},
+        {"name": "presentation", "type": "TEXT"},
+        {"name": "width", "type": "DECIMAL(5, 2)"},
+        {"name": "height", "type": "DECIMAL(5, 2)"},
+        {"name": "depth", "type": "DECIMAL(5, 2)"},
+        {"name": "embedding", "type": "VECTOR(128)"},
+        {"name": "tfidf", "type": "VECTOR(2048)"}
+    ]
+}
+```
 
-### Usage
+### 5. API Endpoints
 
-To run the test script, use the following commands in the terminal:
+`GET /books`
 
-- `./make-test.sh`: Run the test script without scraping and virtual environment setup.
-- `./make-test.sh --enable-scraping`: Run the test script with scraping enabled.
-- `./make-test.sh --enable-venv-setup`: Run the test script with virtual environment setup enabled.
-- `./make-test.sh --enable-scraping --enable-venv-setup`: Run the test script with both scraping and virtual environment setup enabled.
+Retrieve books from the database with filtering options:
 
-### Cleanup
+```python
+@router.get("/books", response_model=List[Book])
+async def get_books(...):
+    # Filters by fields like `product_title`, `author`, `date_de_parution`, etc.
+    # Pagination supported through `page` and `page_size` parameters.
+```
 
-The script includes a cleanup function that is triggered on exit. It stops and deletes the PostgreSQL container and cleans up the environment.
+Parameters:
 
-## Environment Variables
+- `id`, `product_title`, `author`, etc.: Optional filters on book fields.
+- `page` and `page_size`: Pagination controls.
 
-The Makefile and test script rely on environment variables defined in the `.env` file. Ensure that the `.env` file is properly configured with the required variables.
+`GET /books/{book_id}/similar`
 
-## Dependencies
+Retrieve similar books based on the embedding vector of a specified `book_id`.
 
-- Python
-- Docker
-- PostgreSQL
-- Scrapy
-- Other dependencies specified in the `requirements.txt` file.
+```python
+@router.get("/books/{book_id}/similar", response_model=List[Book])
+async def get_similar_books(...):
+    # Retrieves books similar to the given `book_id` using specified distance methods.
+```
+Parameters:
 
-## Ressources
+- `method`: Similarity metric, e.g., "cosine," "euclidean," or "taxicab."
+- Optional filters to narrow down by author, collection, editor, etc.
 
-- Documentation [pgvector](https://github.com/pgvector/pgvector)
+### 6. Running the Pipeline
+
+To operate the entire pipeline without duplicating the Makefile documentation, follow these steps:
+
+- Data Collection: Run the Scrapy crawler to gather raw book data in JSON format.
+- Data Transformation and Storage: Use the `store` module scripts to process the JSON data into a clean, compressed format and load it into the PostgreSQL database.
+- Daily Embedding Update: Scheduled recalculation of embeddings and TF-IDF vectors at 1 a.m., managed within the `microservices` module.
+- API Exposure: Run the FastAPI server to provide RESTful access to the database.
+
+Refer to the Makefile readme for specific command details.
+
+### 7. Environment Setup
+
+To set up the environment, cf `readme-makefile`. Environment variables are located in `.env`.
+
+
+### 8. Testing
+
+For testing, utilize the make-test.sh script. This script automates testing across the different modules and verifies end-to-end functionality. For now, only the module `collect` and `store` can be tested. See the Makefile readme for available testing flags.

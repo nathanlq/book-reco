@@ -6,3 +6,8 @@ scripts/__pycache__/
 scripts/utils/__pycache__/
 **__pycache__/
 data/postgres/
+mlruns/
+mlartifacts/
+outputs/
+mlruns.db
+**/basic_auth.db

@@ -7,6 +7,11 @@ import numpy as np
 import json
 import hashlib
 from datetime import datetime
+import mlflow
+import mlflow.sklearn
+from common.setup_mlflow_autolog import setup_mlflow_autolog
+
+setup_mlflow_autolog()
 
 load_dotenv()
 
@@ -49,7 +54,6 @@ async def table_exists(conn):
     result = await conn.fetchval(f"SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = '{TABLE_NAME}')")
     return result
 
-
 async def create_table(conn):
     if not await table_exists(conn):
         await conn.execute("CREATE EXTENSION IF NOT EXISTS vector;")
@@ -61,10 +65,8 @@ async def create_table(conn):
             )
         """)
 
-
 async def drop_table(conn):
     await conn.execute(f"DROP TABLE IF EXISTS {TABLE_NAME}")
-
 
 async def insert_data(conn, data):
     async with conn.transaction():
@@ -92,13 +94,11 @@ async def insert_data(conn, data):
                 print(f"Error inserting record: {record}")
                 print(f"Error message: {e}")
 
-
 async def retrieve_data(conn):
     rows = await conn.fetch(f"SELECT * FROM {TABLE_NAME} LIMIT 5")
     for row in rows:
         print(row)
     print("Retrieve OK.")
-
 
 async def main(drop_flag=False):
     conn = await asyncpg.connect(
@@ -117,7 +117,6 @@ async def main(drop_flag=False):
     await retrieve_data(conn)
     await conn.close()
 
-
 if __name__ == "__main__":
     import argparse
 
@@ -125,5 +124,20 @@ if __name__ == "__main__":
     parser.add_argument("--drop", action="store_true", help="Drop the table before recreating it.")
 
     args = parser.parse_args()
+    start_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-    asyncio.run(main(args.drop))
+    with mlflow.start_run(run_name="loader_run"):
+        asyncio.run(main(args.drop))
+
+        mlflow.log_param("start_time", start_time)
+
+        end_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+        mlflow.log_param("end_time", end_time)
+
+        mlflow.log_param("drop_table", args.drop)
+        mlflow.log_param("table_name", TABLE_NAME)
+
+        mlflow.log_metric("num_records", len(data))
+
+        mlflow.log_artifact('data/cleaned_data.parquet')

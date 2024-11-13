@@ -80,6 +80,11 @@ test:
 	@echo "Running end-to-end test..."
 	./make-test.sh --enable-scraping --enable-venv-setup
 
+start-mlflow: setup
+	@echo "Starting MLflow server..."
+	. $(VENV)/bin/activate && mlflow server --backend-store-uri $(MLFLOW_TRACKING_URI)
+
+
 help:
 	@echo "Usage: make <target>"
 	@echo ""
@@ -95,5 +100,6 @@ help:
 	@echo "  stop-postgres        Stop the PostgreSQL container"
 	@echo "  delete-postgres      Delete the PostgreSQL container"
 	@echo "  create-db            Create the PostgreSQL database if it does not exist"
+	@echo "  start-mlflow         Start the MLflow server"
 	@echo "  help                 Display this help message"
 	@echo "  test                 Run end-to-end test for the entire data pipeline"

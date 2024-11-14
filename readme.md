@@ -126,6 +126,18 @@ To set up the environment, cf `readme-makefile`. Environment variables are locat
 
 For testing, utilize the make-test.sh script. This script automates testing across the different modules and verifies end-to-end functionality. For now, only the module `collect` and `store` can be tested. See the Makefile readme for available testing flags.
 
+### 9. Model Tracking with MLflow
+
+MLflow is integrated into the pipeline to enable tracking and management of embedding models and TF-IDF vector transformations. The `microservices` module uses MLflow to log parameters, metrics, and artifacts for models used in the similarity calculations.
+
+The MLflow integration enables the following key capabilities:
+
+- **Experiment Tracking**: Logs model parameters, hyperparameters, and metrics for each run, allowing comparison between various model configurations (e.g., different embeddings or vectorization techniques).
+- **Model Versioning**: Each trained embedding or TF-IDF model version is stored, enabling easy rollbacks or updates to specific model versions when needed.
+- **Artifact Management**: Stores embeddings and vectorization artifacts, such as vector representations, for reproducibility and backup.
+
+MLflow enhances model tracking in this project by maintaining clear version history and simplifying model management, especially for updates to similarity models. This setup can evolve with advanced model-serving configurations or integration with cloud-based MLflow tracking for larger-scale deployments.
+
 ## Ressources
 
 - [`pgvector`](https://github.com/pgvector/pgvector)

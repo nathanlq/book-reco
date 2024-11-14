@@ -1,4 +1,4 @@
-.PHONY: all setup run-scrapy compress clean start-postgres stop-postgres delete-postgres help
+.PHONY: all setup run-scrapy compress clean start-postgres stop-postgres delete-postgres create-db start-mlflow test help
 
 include .env
 export $(shell sed 's/=.*//' .env)
@@ -82,8 +82,11 @@ test:
 
 start-mlflow: setup
 	@echo "Starting MLflow server..."
-	. $(VENV)/bin/activate && mlflow server --backend-store-uri $(MLFLOW_TRACKING_URI)
-
+	. $(VENV)/bin/activate && \
+	mlflow server \
+		--default-artifact-root $(MLFLOW_ARTIFACT_ROOT) \
+		--host $(MLFLOW_HOST) --port $(MLFLOW_PORT) && \
+	deactivate
 
 help:
 	@echo "Usage: make <target>"
@@ -96,6 +99,7 @@ help:
 	@echo "  prepare              Prepare the data after compression"
 	@echo "  load                 Load the prepared data into PostgreSQL asynchronously"
 	@echo "  clean                Clean up the environment"
+	@echo "  clean-venv           Delete the virtual environment"
 	@echo "  start-postgres       Start the PostgreSQL container"
 	@echo "  stop-postgres        Stop the PostgreSQL container"
 	@echo "  delete-postgres      Delete the PostgreSQL container"

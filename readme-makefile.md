@@ -1,12 +1,25 @@
-# README
+# Makefile Documentation
 
-This repository contains a Makefile and a test script (make-test.sh) to automate the setup, execution, and testing of a data pipeline.
+The Makefile automates setting up the project environment, running data collection, preparing data, loading it into PostgreSQL, and managing additional services like MLflow for model tracking and PostgreSQL for database storage.
 
-## Makefile
+## Setup and Usage
 
-The Makefile defines various targets to manage the environment, run tasks, and handle PostgreSQL operations.
+Before running the Makefile, ensure that all environment variables in .env are set up. Variables used include:
 
-### Targets
+- `PYTHON`: The path to the Python interpreter (e.g., python3).
+- `VENV`: The path for the Python virtual environment directory.
+- `REQUIREMENTS`: The requirements file path.
+- `DATA_DIR`: Directory for data files.
+- `PROJECT_DIR`: The main project directory.
+- `SCRIPTS_DIR`: Directory for Python scripts.
+- `POSTGRES_VOLUME`: Directory for PostgreSQL data.
+- `POSTGRES_CONTAINER_NAME`, `POSTGRES_DB`, `POSTGRES_PORT`, `POSTGRES_PASSWORD`: PostgreSQL setup details.
+- `MLFLOW_ARTIFACT_ROOT`: Root directory for MLflow artifacts.
+- `MLFLOW_HOST`, `MLFLOW_PORT`: Host and port for the MLflow server.
+
+### Makefile Targets
+
+Here is a summary of the Makefile targets. Each command can be run individually using `make <target>`.
 
 - `all`: Run all tasks (setup, run-scrapy, compress).
 - `setup`: Set up the environment by creating a virtual environment and installing dependencies.
@@ -19,8 +32,10 @@ The Makefile defines various targets to manage the environment, run tasks, and h
 - `stop-postgres`: Stop the PostgreSQL container.
 - `delete-postgres`: Delete the PostgreSQL container.
 - `create-db`: Create the PostgreSQL database if it does not exist.
+- `start-mlflow`: Starts the MLflow server for model tracking.
 - `help`: Display the help message with available targets.
 - `test`: Run end-to-end test for the entire data pipeline.
+
 
 ### Usage
 
@@ -40,48 +55,32 @@ To use the Makefile, run the following commands in the terminal:
 - `make help`: Display the help message.
 - `make test`: Run end-to-end test for the entire data pipeline.
 
-## make-test.sh
+## Running Tests
 
-The `make-test.sh` script automates the end-to-end testing of the data pipeline. It performs the following steps:
+The project includes an automated end-to-end test script, **make-test.sh**, which tests the full data pipeline, including the environment setup, data scraping, processing, and loading into PostgreSQL.
 
-1. Set up the environment (optional).
-2. Start the PostgreSQL container.
-3. Check if the PostgreSQL container is running.
-4. Test the PostgreSQL connection.
-5. Create the PostgreSQL database.
-6. Run the Scrapy spider (optional).
-7. Compress the data.
-8. Prepare the data.
-9. Load the data into PostgreSQL.
-10. Verify the data in PostgreSQL.
-11. Clean up the environment.
+### Running make-test.sh
 
-### Flags
+To run the end-to-end test, use the command `make test`. This command initiates make-test.sh with two optional flags:
 
-- `--enable-scraping`: Enable the Scrapy spider step.
-- `--enable-venv-setup`: Enable the virtual environment setup step.
+- `--enable-scraping`: Enables the Scrapy data scraping step.
+- `--enable-venv-setup`: Enables environment setup to create and activate a virtual environment before running tests.
 
-### Usage
+### Test Workflow
 
-To run the test script, use the following commands in the terminal:
+The `make-test.sh` script performs the following steps:
 
-- `./make-test.sh`: Run the test script without scraping and virtual environment setup.
-- `./make-test.sh --enable-scraping`: Run the test script with scraping enabled.
-- `./make-test.sh --enable-venv-setup`: Run the test script with virtual environment setup enabled.
-- `./make-test.sh --enable-scraping --enable-venv-setup`: Run the test script with both scraping and virtual environment setup enabled.
+- **Setup**: Activates the virtual environment if specified by `--enable-venv-setup`.
+- **Start PostgreSQL**: Checks if the PostgreSQL container is running, and starts or creates it if needed.
+- **Database Verification**: Tests PostgreSQL connectivity and ensures the database is correctly initialized.
+- **Scraping**: Runs the Scrapy spider if `--enable-scraping` is specified.
+- **Data Processing and Loading**: Executes the compression, preparation, and loading steps.
+- **Data Verification**: Confirms data has been successfully loaded into the database by verifying table counts and content.
+- **Cleanup**: Stops and removes the PostgreSQL container and cleans up temporary data
 
-### Cleanup
+### Notes
 
-The script includes a cleanup function that is triggered on exit. It stops and deletes the PostgreSQL container and cleans up the environment.
+- Ensure Docker is installed and running as make-test.sh depends on Docker to manage the PostgreSQL container.
+- If using MLflow, ensure the necessary MLflow configuration is specified in `.env`. The server has to be started.
 
-## Environment Variables
-
-The Makefile and test script rely on environment variables defined in the `.env` file. Ensure that the `.env` file is properly configured with the required variables.
-
-## Dependencies
-
-- Python
-- Docker
-- PostgreSQL
-- Scrapy
-- Other dependencies specified in the `requirements.txt` file.
+This test script is intended for development and validation purposes, enabling you to quickly check the end-to-end functionality of the data pipeline.

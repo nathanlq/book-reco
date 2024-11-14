@@ -1,3 +1,5 @@
+
+
 alembic==1.14.0
 asyncpg==0.30.0
 blinker==1.9.0
@@ -68,9 +70,9 @@ sqlparse==0.5.1
 sympy==1.13.1
 threadpoolctl==3.5.0
 tokenizers==0.20.3
-torch==2.5.1+cpu
-torchaudio==2.5.1+cpu
-torchvision==0.20.1+cpu
+torch==2.5.1
+torchaudio==2.5.1
+torchvision==0.20.1
 tqdm==4.67.0
 transformers==4.46.2
 typing_extensions==4.12.2

@@ -4,6 +4,15 @@ This module consists of vectorization and database update services for a text pr
 1. **vectors.py** - Contains functions for generating embeddings and TF-IDF vectors and training the PCA and TF-IDF models.
 2. **vectorizer.py** - Manages asynchronous tasks for batch updates, recalculations, and scheduled retraining of vectors.
 
+## MLflow Integration
+
+MLflow is used in this module for monitoring and tracking experiments, particularly for vectorization processes and model training (PCA, TF-IDF). The integration enables tracking of parameters, metrics, and model versions, facilitating reproducibility and efficient model management.
+
+### Global Setup
+
+- **MLflow Experiment Name**: `vectorizer_monitoring`
+- **Experiment Tracking**: Logs parameters and results of vectorization processes, including when models are loaded or trained, and the start and end times for each step.
+
 ## `vectors.py`
 
 This file is responsible for text vectorization, including creating embeddings and TF-IDF vectors and training or loading PCA and TF-IDF models. It uses the CamemBERT model for embedding and TF-IDF for keyword relevance.
@@ -19,22 +28,22 @@ This file is responsible for text vectorization, including creating embeddings a
 ### Functions
 
 #### `initialize_pca_model(conn, table_name)`
-Asynchronously initializes or loads a PCA model from a database.
+Asynchronously initializes or loads a PCA model from a database and logs the process in MLflow.
 
 - **Parameters**:
   - `conn`: Database connection object.
   - `table_name`: Database table name containing text data.
 - **Functionality**:
-  - Loads the PCA model if saved; otherwise, fetches text data from the database, generates embeddings, trains a PCA model, and saves it.
+  - Logs parameters such as whether the PCA model is loaded from disk or initialized. If the model is not found, it fetches data from the database, generates embeddings, trains a PCA model, and saves it.
 
 #### `initialize_tfidf_model(conn, table_name)`
-Asynchronously initializes or loads a TF-IDF vectorizer from the database.
+Asynchronously initializes or loads a TF-IDF vectorizer from the database and logs the process in MLflow.
 
 - **Parameters**:
   - `conn`: Database connection object.
   - `table_name`: Database table name containing text data.
 - **Functionality**:
-  - Loads the TF-IDF model if saved; otherwise, fetches data from the database, trains a TF-IDF vectorizer on combined text data, and saves it.
+  - Logs parameters such as whether the TF-IDF model is loaded from disk or trained. If the model is not found, it fetches data from the database, trains the TF-IDF vectorizer, and saves it.
 
 #### `get_embedding(text, max_length=512, apply_pca=True)`
 Generates a CamemBERT embedding for a given text.
@@ -61,22 +70,22 @@ Generates embedding and TF-IDF vectors for a database row.
 - **Returns**: Tuple with embedding and TF-IDF vectors for the combined text.
 
 #### `retrain_tfidf_model(conn, table_name)`
-Retrains the TF-IDF model using the entire database content.
+Retrains the TF-IDF model using the entire database content and logs the retraining process in MLflow.
 
 - **Parameters**:
   - `conn`: Database connection object.
   - `table_name`: Table name containing text data.
 - **Functionality**:
-  - Fetches text data, retrains the TF-IDF model, and saves the updated model.
+  - Logs the retraining process, fetches text data, retrains the TF-IDF model, and saves the updated model.
 
 #### `retrain_pca_model(conn, table_name)`
-Retrains the PCA model using the entire database content.
+Retrains the PCA model using the entire database content and logs the retraining process in MLflow.
 
 - **Parameters**:
   - `conn`: Database connection object.
   - `table_name`: Table name containing text data.
 - **Functionality**:
-  - Fetches text data, generates embeddings, retrains the PCA model, and saves it.
+  - Logs the retraining process, fetches text data, generates embeddings, retrains the PCA model, and saves it.
 
 ## `vectorizer.py`
 
@@ -85,6 +94,7 @@ This file orchestrates asynchronous tasks for updating vector representations in
 ### Global Variables and Environment Variables
 
 - **POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DB, TABLE_NAME**: Database credentials and table name loaded from environment variables.
+- **MLflow Experiment**: This module logs various steps such as database updates, vector calculations, and model retraining, using MLflow to track parameters and metrics.
 
 ### Functions
 
@@ -94,16 +104,16 @@ Re-establishes a database connection using the provided environment variables.
 - **Returns**: An `asyncpg` database connection object.
 
 #### `update_combined_vectors(conn, recalculate_all=False)`
-Fetches rows from the database and updates vector representations.
+Fetches rows from the database and updates vector representations (embedding and TF-IDF), logging the process in MLflow.
 
 - **Parameters**:
   - `conn`: Database connection object.
   - `recalculate_all`: Flag indicating whether to update all rows or only those without vector data.
 - **Functionality**:
-  - For each row, generates embedding and TF-IDF vectors, then updates the database in batches.
+  - Logs the number of rows fetched and processed, generates embeddings and TF-IDF vectors, and updates the database in batches. It also handles errors with retries and logs relevant information using MLflow.
 
 #### `execute_batch_updates(conn, updates)`
-Executes batched vector updates in the database with retry logic.
+Executes batched vector updates in the database with retry logic and logs updates in MLflow.
 
 - **Parameters**:
   - `conn`: Database connection object.
@@ -112,7 +122,7 @@ Executes batched vector updates in the database with retry logic.
   - Updates embeddings and TF-IDF vectors for a batch of rows, with retries in case of connection issues.
 
 #### `daily_recalculation_task(conn, lock)`
-Schedules a daily recalculation task to update vectors and retrain models at a fixed time.
+Schedules a daily recalculation task to update vectors and retrain models at a fixed time, logging the process in MLflow.
 
 - **Parameters**:
   - `conn`: Database connection object.
@@ -121,7 +131,7 @@ Schedules a daily recalculation task to update vectors and retrain models at a f
   - Waits until the scheduled time, then triggers TF-IDF retraining and updates all vectors.
 
 #### `new_vector_watcher_task(conn, lock)`
-Continuously checks for new rows needing vector calculations and updates them.
+Continuously checks for new rows needing vector calculations and updates them, logging the status using MLflow.
 
 - **Parameters**:
   - `conn`: Database connection object.
@@ -133,7 +143,7 @@ Continuously checks for new rows needing vector calculations and updates them.
 The entry point for the vectorizer service.
 
 - **Functionality**:
-  - Establishes a database connection and initializes PCA and TF-IDF models if not already loaded.
+  - Establishes a database connection, initializes PCA and TF-IDF models, and logs the process in MLflow.
   - Starts concurrent tasks for daily recalculations and new row monitoring.
 
 ---
@@ -143,3 +153,4 @@ The entry point for the vectorizer service.
 - **Dependencies**: Requires `asyncpg`, `torch`, `transformers`, `joblib`, `scikit-learn`, and `tqdm`.
 - **Models**: Uses CamemBERT for text embeddings, and `PCA` and `TF-IDF` for dimensionality reduction and keyword extraction.
 - **Concurrency**: Asynchronous tasks handle vector calculations and model updates, allowing efficient database operations.
+- **MLflow Logging**: Various functions in this module, including initialization, retraining, and batch updates, use MLflow for monitoring and tracking key parameters, metrics, and models.

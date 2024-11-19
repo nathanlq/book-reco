@@ -20,19 +20,20 @@ run-scrapy: setup
 
 compress: setup
 	@echo "Compressing data..."
-	. $(VENV)/bin/activate && $(PYTHON) $(SCRIPTS_DIR)/compress.py && deactivate
+	. $(VENV)/bin/activate && $(PYTHON) -m $(SCRIPTS_DIR).compress && deactivate
 
 prepare: compress
 	@echo "Preparing data..."
-	. $(VENV)/bin/activate && $(PYTHON) $(SCRIPTS_DIR)/prepare.py && deactivate
+	. $(VENV)/bin/activate && $(PYTHON) -m $(SCRIPTS_DIR).prepare && deactivate
 
 load: prepare
 	@echo "Loading data into PostgreSQL asynchronously..."
-	. $(VENV)/bin/activate && $(PYTHON) $(SCRIPTS_DIR)/loader.py && deactivate
+	. $(VENV)/bin/activate && $(PYTHON) -m $(SCRIPTS_DIR).loader && deactivate
 
 clean:
 	@echo "Cleaning up the data..."
 	rm -f $(DATA_DIR)/*.parquet
+	rm -rf $(DATA_DIR)/postgres
 
 clean-venv:
 	rm -rf $(VENV)

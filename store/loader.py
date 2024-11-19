@@ -49,10 +49,13 @@ for record in data:
     for field in ['poids', 'collection', 'presentation', 'format']:
         if pd.isna(record[field]):
             record[field] = None
+    record['utils'] = json.dumps({'image_downloaded': False})
+
 
 async def table_exists(conn):
     result = await conn.fetchval(f"SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = '{TABLE_NAME}')")
     return result
+
 
 async def create_table(conn):
     if not await table_exists(conn):
@@ -65,8 +68,10 @@ async def create_table(conn):
             )
         """)
 
+
 async def drop_table(conn):
     await conn.execute(f"DROP TABLE IF EXISTS {TABLE_NAME}")
+
 
 async def insert_data(conn, data):
     async with conn.transaction():
@@ -76,10 +81,10 @@ async def insert_data(conn, data):
                     INSERT INTO {TABLE_NAME} (
                         id, product_title, author, resume, labels, image_url, collection,
                         date_de_parution, ean, editeur, format, isbn, nb_de_pages,
-                        poids, presentation, width, height, depth
+                        poids, presentation, width, height, depth, utils
                     ) VALUES (
                         $1, $2, $3, $4, $5::JSONB, $6, $7, $8, $9, $10, $11, $12, $13,
-                        $14, $15, $16, $17, $18
+                        $14, $15, $16, $17, $18, $19::JSONB
                     )
                     ON CONFLICT (id) DO NOTHING
                 """,
@@ -88,17 +93,19 @@ async def insert_data(conn, data):
                                    record['collection'], record['date_de_parution'], record['ean'],
                                    record['editeur'], record['format'], record['isbn'],
                                    record['nb_de_pages'], record['poids'], record['presentation'],
-                                   record['width'], record['height'], record['depth']
+                                   record['width'], record['height'], record['depth'], record['utils']
                                    )
             except Exception as e:
                 print(f"Error inserting record: {record}")
                 print(f"Error message: {e}")
+
 
 async def retrieve_data(conn):
     rows = await conn.fetch(f"SELECT * FROM {TABLE_NAME} LIMIT 5")
     for row in rows:
         print(row)
     print("Retrieve OK.")
+
 
 async def main(drop_flag=False):
     conn = await asyncpg.connect(
@@ -120,8 +127,10 @@ async def main(drop_flag=False):
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="Loader script with optional table drop.")
-    parser.add_argument("--drop", action="store_true", help="Drop the table before recreating it.")
+    parser = argparse.ArgumentParser(
+        description="Loader script with optional table drop.")
+    parser.add_argument("--drop", action="store_true",
+                        help="Drop the table before recreating it.")
 
     args = parser.parse_args()
     start_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')

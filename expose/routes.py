@@ -1,8 +1,13 @@
-from fastapi import APIRouter, Query
+import aiohttp
+import os
+import json
+from fastapi import APIRouter, Query, HTTPException
 from typing import List, Optional
+from fastapi.responses import FileResponse
 from expose.models import Book
 from expose.database import get_db_connection
 from expose.config import TABLE_NAME
+from microservices.images import generate_image_path, download_and_save_image_webp
 
 router = APIRouter()
 
@@ -188,3 +193,38 @@ async def get_similar_books(
 
     await conn.close()
     return similar_books
+
+
+@router.get("/books/{book_id}/image", response_class=FileResponse)
+async def get_book_image(book_id: str):
+    conn = await get_db_connection()
+
+    query = f"SELECT id, image_url, utils FROM {TABLE_NAME} WHERE id = $1"
+    book_details = await conn.fetchrow(query, book_id)
+
+    if not book_details:
+        await conn.close()
+        raise HTTPException(status_code=404, detail="Book not found")
+
+    image_url = book_details['image_url']
+    utils = book_details['utils']
+    utils = json.loads(utils)
+    image_downloaded = utils.get('image_downloaded', False)
+
+    image_path = generate_image_path(image_url)
+
+    if not os.path.exists(image_path) or not image_downloaded:
+        async with aiohttp.ClientSession() as session:
+            image_path = await download_and_save_image_webp(session, image_url, image_path)
+            if image_path:
+                await conn.execute(
+                    f"UPDATE {TABLE_NAME} SET utils = jsonb_set(utils, '{{image_downloaded}}', 'true') WHERE id = $1",
+                    book_id
+                )
+
+    if not os.path.exists(image_path):
+        await conn.close()
+        raise HTTPException(status_code=404, detail="Image not found")
+
+    await conn.close()
+    return FileResponse(image_path)

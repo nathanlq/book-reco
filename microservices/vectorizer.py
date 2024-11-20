@@ -1,33 +1,13 @@
 import asyncio
-import asyncpg
-import os
 import mlflow
-from common.setup_mlflow_autolog import setup_mlflow_autolog
+import asyncpg
 from datetime import datetime, timedelta
-from dotenv import load_dotenv
 from tqdm.asyncio import tqdm
+from common.setup_mlflow_autolog import setup_mlflow_autolog
+from common.utils import reconnect, execute_batch_updates, TABLE_NAME
 from microservices.utils.vectors import generate_vectors_for_row, retrain_tfidf_model, initialize_pca_model, initialize_tfidf_model
 
-load_dotenv()
-
-POSTGRES_USER = os.getenv('POSTGRES_USER')
-POSTGRES_PASSWORD = os.getenv('POSTGRES_PASSWORD')
-POSTGRES_HOST = os.getenv('POSTGRES_HOST')
-POSTGRES_PORT = os.getenv('POSTGRES_PORT')
-POSTGRES_DB = os.getenv('POSTGRES_DB')
-TABLE_NAME = os.getenv('TABLE_NAME')
-
 setup_mlflow_autolog(experiment_name="vectorizer_monitoring")
-
-
-async def reconnect():
-    return await asyncpg.connect(
-        user=POSTGRES_USER,
-        password=POSTGRES_PASSWORD,
-        host=POSTGRES_HOST,
-        port=POSTGRES_PORT,
-        database=POSTGRES_DB
-    )
 
 
 async def update_combined_vectors(conn, recalculate_all=False):
@@ -64,11 +44,11 @@ async def update_combined_vectors(conn, recalculate_all=False):
             updates.append((embedding_vector_str, tfidf_vector_str, row['id']))
 
             if len(updates) >= batch_size:
-                await execute_batch_updates(conn, updates)
+                await execute_batch_updates(conn, updates, f"UPDATE {TABLE_NAME} SET embedding = $1, tfidf = $2 WHERE id = $3")
                 updates = []
 
         if updates:
-            await execute_batch_updates(conn, updates)
+            await execute_batch_updates(conn, updates, f"UPDATE {TABLE_NAME} SET embedding = $1, tfidf = $2 WHERE id = $3")
 
         end_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
@@ -76,38 +56,6 @@ async def update_combined_vectors(conn, recalculate_all=False):
         mlflow.log_param("end_time", end_time)
         mlflow.log_param("num_rows", len(rows))
         mlflow.log_param("recalculate_all", recalculate_all)
-
-
-async def execute_batch_updates(conn, updates):
-    max_retries = 3
-    retry_delay = 30
-    retries = 0
-
-    while retries < max_retries:
-        try:
-            await conn.executemany(
-                f"UPDATE {TABLE_NAME} SET embedding = $1, tfidf = $2 WHERE id = $3",
-                updates
-            )
-            break
-        except asyncpg.exceptions.ConnectionDoesNotExistError as e:
-            retries += 1
-            print(
-                f"Error executing batch updates: {e}. Retrying ({retries}/{max_retries}) in {retry_delay} seconds...")
-            await asyncio.sleep(retry_delay)
-            conn = await reconnect()
-        except asyncpg.exceptions.InterfaceError as e:
-            retries += 1
-            print(
-                f"Error executing batch updates: {e}. Retrying ({retries}/{max_retries}) in {retry_delay} seconds...")
-            await asyncio.sleep(retry_delay)
-        except Exception as e:
-            print(f"Error executing batch updates: {e}")
-            raise
-
-    if retries == max_retries:
-        raise RuntimeError(
-            "Max retries reached. Failed to execute batch updates.")
 
 
 async def daily_recalculation_task(conn, lock):
@@ -141,13 +89,7 @@ async def new_vector_watcher_task(conn, lock):
 async def main():
     while True:
         try:
-            conn = await asyncpg.connect(
-                user=POSTGRES_USER,
-                password=POSTGRES_PASSWORD,
-                host=POSTGRES_HOST,
-                port=POSTGRES_PORT,
-                database=POSTGRES_DB
-            )
+            conn = await reconnect()
 
             lock = asyncio.Lock()
 

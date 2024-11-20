@@ -1,26 +1,19 @@
 import asyncio
-import asyncpg
-import os
 import numpy as np
 import joblib
 import json
+import mlflow
+import os
+import asyncpg
+import json
+from tqdm import tqdm
 from datetime import datetime, timedelta
 from sklearn.cluster import KMeans
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import silhouette_score
-from dotenv import load_dotenv
-from tqdm.asyncio import tqdm
-import mlflow
 from common.setup_mlflow_autolog import setup_mlflow_autolog
+from common.utils import reconnect, execute_batch_updates, TABLE_NAME
 
-load_dotenv()
-
-POSTGRES_USER = os.getenv('POSTGRES_USER')
-POSTGRES_PASSWORD = os.getenv('POSTGRES_PASSWORD')
-POSTGRES_HOST = os.getenv('POSTGRES_HOST')
-POSTGRES_PORT = os.getenv('POSTGRES_PORT')
-POSTGRES_DB = os.getenv('POSTGRES_DB')
-TABLE_NAME = os.getenv('TABLE_NAME')
 KMEANS_MODEL_PATH = 'data/models/kmeans_model.joblib'
 try:
     NUM_CLUSTERS = int(os.getenv('NUM_CLUSTERS', 5))
@@ -30,17 +23,6 @@ except ValueError as e:
     raise RuntimeError(f"Invalid NUM_CLUSTERS value: {e}")
 
 setup_mlflow_autolog(experiment_name="kmeans_clustering")
-
-
-async def reconnect():
-    return await asyncpg.connect(
-        user=POSTGRES_USER,
-        password=POSTGRES_PASSWORD,
-        host=POSTGRES_HOST,
-        port=POSTGRES_PORT,
-        database=POSTGRES_DB
-    )
-
 
 def balance_clusters(labels, num_clusters):
     cluster_sizes = np.bincount(labels, minlength=num_clusters)
@@ -54,8 +36,7 @@ def balance_clusters(labels, num_clusters):
                 if cluster_sizes[j] < target_size:
                     needed = target_size - cluster_sizes[j]
                     move_count = min(excess, needed)
-                    move_indices = np.where(balanced_labels == i)[
-                        0][:move_count]
+                    move_indices = np.where(balanced_labels == i)[0][:move_count]
                     balanced_labels[move_indices] = j
                     cluster_sizes[i] -= move_count
                     cluster_sizes[j] += move_count
@@ -63,7 +44,6 @@ def balance_clusters(labels, num_clusters):
                     if excess == 0:
                         break
     return balanced_labels
-
 
 async def initialize_kmeans_model(conn, table_name, num_clusters=NUM_CLUSTERS):
     setup_mlflow_autolog(experiment_name="kmeans_clustering")
@@ -118,7 +98,6 @@ async def initialize_kmeans_model(conn, table_name, num_clusters=NUM_CLUSTERS):
 
         await labelize_new_rows(conn, recalculate_all=True)
 
-
 async def labelize_new_rows(conn, recalculate_all=False):
     if not os.path.exists(KMEANS_MODEL_PATH):
         print("KMeans model not found. Please run initialize_kmeans_model first.")
@@ -147,39 +126,12 @@ async def labelize_new_rows(conn, recalculate_all=False):
         updates.append((json.dumps(utils), row['id']))
 
         if len(updates) >= 100:
-            await execute_batch_updates(conn, updates)
+            await execute_batch_updates(conn, updates, f"UPDATE {TABLE_NAME} SET utils = $1 WHERE id = $2")
             updates = []
 
     if updates:
-        await execute_batch_updates(conn, updates)
+        await execute_batch_updates(conn, updates, f"UPDATE {TABLE_NAME} SET utils = $1 WHERE id = $2")
     print("Finished labeling new rows.")
-
-
-async def execute_batch_updates(conn, updates):
-    max_retries = 3
-    retry_delay = 30
-    retries = 0
-
-    while retries < max_retries:
-        try:
-            await conn.executemany(
-                f"UPDATE {TABLE_NAME} SET utils = $1 WHERE id = $2",
-                updates
-            )
-            break
-        except asyncpg.exceptions.ConnectionDoesNotExistError as e:
-            retries += 1
-            print(
-                f"Error executing updates: {e}. Retrying ({retries}/{max_retries}) in {retry_delay} seconds...")
-            await asyncio.sleep(retry_delay)
-            conn = await reconnect()
-        except Exception as e:
-            print(f"Unexpected error: {e}")
-            raise
-
-    if retries == max_retries:
-        raise RuntimeError("Max retries reached. Failed to update rows.")
-
 
 async def weekly_retrain_task(conn, lock, num_clusters=NUM_CLUSTERS):
     while True:
@@ -197,25 +149,17 @@ async def weekly_retrain_task(conn, lock, num_clusters=NUM_CLUSTERS):
             await initialize_kmeans_model(conn, TABLE_NAME, num_clusters)
             print("Weekly KMeans retraining complete.")
 
-
 async def new_row_watcher_task(conn, lock):
     while True:
         async with lock:
             print("Checking for new rows to labelize...")
             await labelize_new_rows(conn)
-        await asyncio.sleep(300)
-
+        await asyncio.sleep(3600)
 
 async def main():
     while True:
         try:
-            conn = await asyncpg.connect(
-                user=POSTGRES_USER,
-                password=POSTGRES_PASSWORD,
-                host=POSTGRES_HOST,
-                port=POSTGRES_PORT,
-                database=POSTGRES_DB
-            )
+            conn = await reconnect()
             lock = asyncio.Lock()
 
             try:

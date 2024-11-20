@@ -8,6 +8,7 @@ scripts/utils/__pycache__/
 data/postgres/
 mlruns/
 mlartifacts/
+mlflow_artifacts/
 outputs/
 mlruns.db
 **/basic_auth.db

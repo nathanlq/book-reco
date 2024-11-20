@@ -1,15 +1,14 @@
 {
-    "embedding_weights": {
-      "resume": 0.3,
-      "product_title": 0.3,
-      "resume_tfidf": 0.2,
-      "product_title_tfidf": 0.2
-    },
-    "categorical_weights": {
-      "author": 0.5,
-      "collection": 0.3,
-      "editeur": 0.2
-    },
-    "labels_weight": 1
-  }
-  
+  "embedding_weights": {
+    "resume": 0.3,
+    "product_title": 0.3,
+    "resume_tfidf": 0.2,
+    "product_title_tfidf": 0.2
+  },
+  "categorical_weights": {
+    "author": 0.5,
+    "collection": 0.3,
+    "editeur": 0.2
+  },
+  "labels_weight": 1
+}

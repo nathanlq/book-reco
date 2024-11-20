@@ -24,7 +24,7 @@ model = CamembertModel.from_pretrained(model_name)
 
 pca = PCA(n_components=128)
 tfidf_vectorizer = TfidfVectorizer(
-    stop_words=french_stop_words, max_features=2048)
+    stop_words=french_stop_words, max_features=4096)
 
 if os.path.exists(PCA_MODEL_PATH):
     pca = joblib.load(PCA_MODEL_PATH)
@@ -72,7 +72,8 @@ async def initialize_pca_model(conn, table_name):
 
             sample_input = embeddings_matrix[:1]
             sample_output = pca.transform(sample_input)
-            signature = mlflow.models.signature.infer_signature(sample_input, sample_output)
+            signature = mlflow.models.signature.infer_signature(
+                sample_input, sample_output)
             mlflow.sklearn.log_model(pca, "pca_model", signature=signature)
 
             print("PCA model trained with a batch of data and saved to disk.")
@@ -105,7 +106,7 @@ async def initialize_tfidf_model(conn, table_name):
                 f"{row['resume']} {row['product_title']}".strip() for row in rows]
 
             tfidf_vectorizer = TfidfVectorizer(
-                stop_words=french_stop_words, max_features=2048)
+                stop_words=french_stop_words, max_features=4096)
 
             print("Training TF-IDF vectorizer on fetched data...")
             tfidf_vectorizer.fit(combined_texts)
@@ -114,16 +115,18 @@ async def initialize_tfidf_model(conn, table_name):
 
             sample_input = combined_texts[:1]
             sample_output = tfidf_vectorizer.transform(sample_input).toarray()
-            signature = mlflow.models.signature.infer_signature(sample_input, sample_output)
-            mlflow.sklearn.log_model(tfidf_vectorizer, "tfidf_vectorizer", signature=signature)
+            signature = mlflow.models.signature.infer_signature(
+                sample_input, sample_output)
+            mlflow.sklearn.log_model(
+                tfidf_vectorizer, "tfidf_vectorizer", signature=signature)
 
             print("TF-IDF vectorizer trained and saved to disk.")
 
-        if len(tfidf_vectorizer.get_feature_names_out()) == 2048:
+        if len(tfidf_vectorizer.get_feature_names_out()) == 4096:
             print("TF-IDF vectorizer has the correct number of features.")
         else:
             print(
-                f"Warning: TF-IDF vectorizer has {len(tfidf_vectorizer.get_feature_names_out())} features, expected 2048.")
+                f"Warning: TF-IDF vectorizer has {len(tfidf_vectorizer.get_feature_names_out())} features, expected 4096.")
 
         end_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         mlflow.log_param("start_time", start_time)
@@ -181,14 +184,16 @@ async def retrain_tfidf_model(conn, table_name):
                          for row in rows] + [row['product_title'] for row in rows]
 
         tfidf_vectorizer = TfidfVectorizer(
-            stop_words=french_stop_words, max_features=2048)
+            stop_words=french_stop_words, max_features=4096)
         tfidf_vectorizer.fit(combined_text)
         joblib.dump(tfidf_vectorizer, TFIDF_MODEL_PATH)
 
         sample_input = combined_text[:1]
         sample_output = tfidf_vectorizer.transform(sample_input).toarray()
-        signature = mlflow.models.signature.infer_signature(sample_input, sample_output)
-        mlflow.sklearn.log_model(tfidf_vectorizer, "tfidf_vectorizer", signature=signature)
+        signature = mlflow.models.signature.infer_signature(
+            sample_input, sample_output)
+        mlflow.sklearn.log_model(
+            tfidf_vectorizer, "tfidf_vectorizer", signature=signature)
 
         print("TF-IDF model retrained with the latest data and saved to disk.")
 
@@ -221,7 +226,8 @@ async def retrain_pca_model(conn, table_name):
 
         sample_input = embeddings_matrix[:1]
         sample_output = pca.transform(sample_input)
-        signature = mlflow.models.signature.infer_signature(sample_input, sample_output)
+        signature = mlflow.models.signature.infer_signature(
+            sample_input, sample_output)
         mlflow.sklearn.log_model(pca, "pca_model", signature=signature)
 
         print("PCA model retrained with the latest data and saved to disk.")

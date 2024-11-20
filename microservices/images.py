@@ -7,7 +7,6 @@ from io import BytesIO
 from tqdm.asyncio import tqdm
 from dotenv import load_dotenv
 import asyncpg
-from datetime import datetime, timedelta
 
 load_dotenv()
 

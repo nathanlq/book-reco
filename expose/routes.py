@@ -122,11 +122,13 @@ async def get_similar_books(
     editeur: Optional[bool] = Query(
         False, description="Filter by editor"),
     format: Optional[bool] = Query(
-        False, description="Filter by format")
+        False, description="Filter by format"),
+    fast: Optional[bool] = Query(
+        False, description="Search only within the same cluster")
 ):
     conn = await get_db_connection()
 
-    query = f"SELECT * FROM {TABLE_NAME} WHERE id = $1"
+    query = f"SELECT *, utils->>'dynamic_cluster_number' as dynamic_cluster_number FROM {TABLE_NAME} WHERE id = $1"
     book_details = await conn.fetchrow(query, book_id)
 
     if not book_details:
@@ -134,6 +136,7 @@ async def get_similar_books(
         return []
 
     book_embedding = book_details['embedding']
+    cluster_label = book_details.get('dynamic_cluster_number')
 
     filters = {
         "author": author,
@@ -150,6 +153,11 @@ async def get_similar_books(
             conditions.append(f"{column} = ${len(params) + 1}")
             params.append(book_details[column])
 
+    if fast and cluster_label is not None:
+        conditions.append(
+            f"utils->>'dynamic_cluster_number' = ${len(params) + 1}")
+        params.append(cluster_label)
+
     base_query = f"SELECT * FROM {TABLE_NAME}"
     if conditions:
         base_query += " WHERE " + " AND ".join(conditions)
@@ -164,7 +172,6 @@ async def get_similar_books(
         await conn.close()
         return []
 
-    print(query)
     rows = await conn.fetch(query, *params)
 
     similar_books = []

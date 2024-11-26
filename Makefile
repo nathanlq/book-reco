@@ -3,7 +3,7 @@
 include .env
 export $(shell sed 's/=.*//' .env)
 
-all: setup run-scrapy compress
+all: setup run-scrapy compress prepare load
 
 setup:
 	@echo "Setting up the environment..."

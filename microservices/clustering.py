@@ -154,7 +154,7 @@ async def new_row_watcher_task(conn, lock):
         async with lock:
             print("Checking for new rows to labelize...")
             await labelize_new_rows(conn)
-        await asyncio.sleep(3600)
+        await asyncio.sleep(300)
 
 async def main():
     while True:

@@ -1,4 +1,3 @@
-# images.py
 import asyncio
 import aiohttp
 import os
@@ -61,10 +60,10 @@ async def fetch_rows_to_process(conn):
 
 async def hourly_image_download_task(conn, lock):
     while True:
-        print("Starting hourly image download task...")
+        print("Starting image download task...")
         await process_images(conn)
-        print("Hourly image download task complete. Waiting for the next run...")
-        await asyncio.sleep(3600)
+        print("Image download task complete. Waiting for the next run...")
+        await asyncio.sleep(300)
 
 async def process_images(conn):
     async with aiohttp.ClientSession() as session:

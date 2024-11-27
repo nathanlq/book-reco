@@ -7,3 +7,4 @@ data/img/
 
 *.parquet
 raw_output.json
+data/postgres

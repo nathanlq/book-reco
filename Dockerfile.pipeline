@@ -14,9 +14,15 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 RUN echo '#!/bin/bash\n\
+set -e\n\
+echo "REFRESH_DATA is set to: $REFRESH_DATA"\n\
 if [ "$REFRESH_DATA" = "true" ]; then\n\
+    echo "Running Scrapy crawler..."\n\
     scrapy crawl furet -o /app/data/raw_output.json -s FEED_FORMAT=json\n\
+else\n\
+    echo "Skipping Scrapy crawler..."\n\
 fi\n\
+echo "Starting data processing scripts..."\n\
 python -m store.compress\n\
 python -m store.prepare\n\
 python -m store.loader\n\

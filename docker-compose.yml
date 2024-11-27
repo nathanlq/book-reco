@@ -1,0 +1,84 @@
+networks:
+  book-reco-network:
+    name: ${NETWORK_NAME}
+
+volumes:
+  postgres-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${POSTGRES_VOLUME}
+  
+  mlflow-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /mlflow_artifacts
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: ${POSTGRES_CONTAINER_NAME}
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init-postgres.sh:/docker-entrypoint-initdb.d/init-postgres.sh
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    networks:
+      - book-reco-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  mlflow:
+    image: python:${PYTHON_VERSION}-slim
+    container_name: book-reco-mlflow
+    volumes:
+      - .:/app
+      - mlflow-data:/mlflow_artifacts
+    working_dir: /app
+    environment:
+      - MLFLOW_ARTIFACT_ROOT=/mlflow_artifacts
+      - MLFLOW_HOST=${MLFLOW_HOST}
+      - MLFLOW_PORT=${MLFLOW_PORT}
+    command: >
+      bash -c "mkdir -p /mlflow_artifacts &&
+      pip install mlflow &&
+      mlflow server
+      --default-artifact-root /mlflow_artifacts
+      --host ${MLFLOW_HOST}
+      --port ${MLFLOW_PORT}"
+    ports:
+      - "${MLFLOW_PORT}:${MLFLOW_PORT}"
+    networks:
+      - book-reco-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  data-pipeline:
+    build: 
+      context: .
+      dockerfile: Dockerfile.pipeline
+    container_name: book-reco-pipeline
+    volumes:
+      - .:/app
+      - ./data:/app/data
+    environment:
+      - POSTGRES_HOST=postgres
+      - MLFLOW_HOST=mlflow
+    networks:
+      - book-reco-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mlflow:
+        condition: service_started

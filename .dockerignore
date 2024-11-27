@@ -1,0 +1,9 @@
+data/img/
+*.jpg
+*.png
+*.gif
+*.jpeg
+*.webp
+
+*.parquet
+raw_output.json

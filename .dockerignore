@@ -1,6 +1,5 @@
 data/img/*.webp
 data/*.parquet
-data/raw_output.json
 data/postgres
 venv/
 mlruns/

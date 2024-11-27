@@ -75,6 +75,7 @@ services:
     environment:
       - POSTGRES_HOST=postgres
       - MLFLOW_HOST=mlflow
+      - REFRESH_DATA=${REFRESH_DATA}
     networks:
       - book-reco-network
     depends_on:

@@ -1,10 +1,8 @@
-data/img/
-*.jpg
-*.png
-*.gif
-*.jpeg
-*.webp
-
-*.parquet
-raw_output.json
+data/img/*.webp
+data/*.parquet
+data/raw_output.json
 data/postgres
+venv/
+mlruns/
+ressources/
+notebook/

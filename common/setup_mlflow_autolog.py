@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-mlflow_host = os.getenv('MLFLOW_HOST', 'localhost')
+mlflow_host = os.getenv('MLFLOW_HOST', '127.0.0.1/')
 mlflow_port = os.getenv('MLFLOW_PORT', '5000')
 tracking_uri = f"http://{mlflow_host}:{mlflow_port}"
 

@@ -4,28 +4,43 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
     git \
+    iputils-ping \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install scrapy==2.11.2
 
 COPY . .
 
 RUN echo '#!/bin/bash\n\
 set -e\n\
 echo "REFRESH_DATA is set to: $REFRESH_DATA"\n\
+echo "Current directory: $(pwd)"\n\
+echo "Checking network access..."\n\
+ping -c 3 google.com\n\
 if [ "$REFRESH_DATA" = "true" ]; then\n\
+    echo "Removing previous output file if it exists..."\n\
+    rm -f /app/data/raw_output.json\n\
     echo "Running Scrapy crawler..."\n\
-    scrapy crawl furet -o /app/data/raw_output.json -s FEED_FORMAT=json\n\
+    cd /app/collect\n\
+    echo "Changed directory to: $(pwd)"\n\
+    scrapy crawl furet -o /app/data/raw_output.json -s FEED_FORMAT=json -s LOG_LEVEL=DEBUG\n\
+    cd /app\n\
 else\n\
     echo "Skipping Scrapy crawler..."\n\
 fi\n\
 echo "Starting data processing scripts..."\n\
 python -m store.compress\n\
 python -m store.prepare\n\
-python -m store.loader\n\
+python -m store.prepare\n\
+if [ "$DROP_TABLE" = "true" ]; then\n\
+    python -m store.loader --drop\n\
+else\n\
+    python -m store.loader\n\
+fi\n\
 ' > /entrypoint.sh && chmod +x /entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]

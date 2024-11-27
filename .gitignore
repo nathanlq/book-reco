@@ -12,4 +12,4 @@ mlflow_artifacts/
 outputs/
 mlruns.db
 **/basic_auth.db
-data/img/
+data/img/*.webp

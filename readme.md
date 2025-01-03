@@ -122,11 +122,7 @@ Refer to the Makefile readme for specific command details.
 To set up the environment, cf `readme-makefile`. Environment variables are located in `.env`.
 
 
-### 8. Testing
-
-For testing, utilize the make-test.sh script. This script automates testing across the different modules and verifies end-to-end functionality. For now, only the module `collect` and `store` can be tested. See the Makefile readme for available testing flags.
-
-### 9. Model Tracking with MLflow
+### 8. Model Tracking with MLflow
 
 MLflow is integrated into the pipeline to enable tracking and management of embedding models and TF-IDF vector transformations. The `microservices` module uses MLflow to log parameters, metrics, and artifacts for models used in the similarity calculations.
 

@@ -1,86 +1,89 @@
 # Makefile Documentation
 
-The Makefile automates setting up the project environment, running data collection, preparing data, loading it into PostgreSQL, and managing additional services like MLflow for model tracking and PostgreSQL for database storage.
+This Makefile manages two main components:
+1. Data Pipeline: Collects and processes book data
+2. Services: Runs the API and microservices (clustering, vectorization, image processing)
 
-## Setup and Usage
+## Environment Setup
 
-Before running the Makefile, ensure that all environment variables in .env are set up. Variables used include:
+Required environment variables in `.env`:
+- Database configuration (POSTGRES_*)
+- MLflow settings (MLFLOW_*)
+- Network configuration (NETWORK_NAME)
+- Optional: REFRESH_DATA for pipeline
 
-- `PYTHON`: The path to the Python interpreter (e.g., python3).
-- `VENV`: The path for the Python virtual environment directory.
-- `REQUIREMENTS`: The requirements file path.
-- `DATA_DIR`: Directory for data files.
-- `PROJECT_DIR`: The main project directory.
-- `SCRIPTS_DIR`: Directory for Python scripts.
-- `POSTGRES_VOLUME`: Directory for PostgreSQL data.
-- `POSTGRES_CONTAINER_NAME`, `POSTGRES_DB`, `POSTGRES_PORT`, `POSTGRES_PASSWORD`: PostgreSQL setup details.
-- `MLFLOW_ARTIFACT_ROOT`: Root directory for MLflow artifacts.
-- `MLFLOW_HOST`, `MLFLOW_PORT`: Host and port for the MLflow server.
+## Makefile Targets
 
-### Makefile Targets
+### Data Pipeline
 
-Here is a summary of the Makefile targets. Each command can be run individually using `make <target>`.
+- `pipeline`: Runs the data pipeline
+  ```bash
+  make pipeline
+  ```
+- `pipeline-with-scraping`: Runs pipeline with fresh data collection
+  ```bash
+  make pipeline-with-scraping
+  ```
+- `stop-pipeline`: Stops the pipeline containers
+  ```bash
+  make stop-pipeline
+  ```
 
-- `all`: Run all tasks (setup, run-scrapy, compress).
-- `setup`: Set up the environment by creating a virtual environment and installing dependencies.
-- `run-scrapy`: Run the Scrapy spider to collect data.
-- `compress`: Compress the collected data.
-- `prepare`: Prepare the data after compression.
-- `load`: Load the prepared data into PostgreSQL asynchronously.
-- `clean`: Clean up the environment by removing the virtual environment and data files.
-- `start-postgres`: Start the PostgreSQL container.
-- `stop-postgres`: Stop the PostgreSQL container.
-- `delete-postgres`: Delete the PostgreSQL container.
-- `create-db`: Create the PostgreSQL database if it does not exist.
-- `start-mlflow`: Starts the MLflow server for model tracking.
-- `help`: Display the help message with available targets.
-- `test`: Run end-to-end test for the entire data pipeline.
+### Services
 
+- `api`: Starts the FastAPI service
+  ```bash
+  make api
+  ```
+- `microservices`: Starts all microservices (clustering, vectorizer, images)
+  ```bash
+  make microservices
+  ```
+- `stop-services`: Stops all services
+  ```bash
+  make stop-services
+  ```
 
-### Usage
+### Maintenance
 
-To use the Makefile, run the following commands in the terminal:
+- `clean`: Removes all containers and volumes
+  ```bash
+  make clean
+  ```
+- `help`: Displays available commands
 
-- `make all`: Run all tasks.
-- `make setup`: Set up the environment.
-- `make run-scrapy`: Run the Scrapy spider.
-- `make compress`: Compress the data.
-- `make prepare`: Prepare the data.
-- `make load`: Load the data into PostgreSQL.
-- `make clean`: Clean up the environment.
-- `make start-postgres`: Start the PostgreSQL container.
-- `make stop-postgres`: Stop the PostgreSQL container.
-- `make delete-postgres`: Delete the PostgreSQL container.
-- `make create-db`: Create the PostgreSQL database.
-- `make help`: Display the help message.
-- `make test`: Run end-to-end test for the entire data pipeline.
+## Architecture
 
-## Running Tests
+### Pipeline Components
+- Data collection (Scrapy crawler)
+- Data processing (compression, preparation)
+- Database loading
 
-The project includes an automated end-to-end test script, **make-test.sh**, which tests the full data pipeline, including the environment setup, data scraping, processing, and loading into PostgreSQL.
+### Microservices
+- **API**: FastAPI service (port 9999)
+- **Clustering**: K-means clustering service
+- **Vectorizer**: Text vectorization service
+- **Images**: Image processing service
 
-### Running make-test.sh
+## Docker Integration
 
-To run the end-to-end test, use the command `make test`. This command initiates make-test.sh with two optional flags:
+Uses two separate compose files:
+- `docker-compose-pipeline.yml`: Data pipeline
+- `docker-compose-microservices.yml`: API and microservices
 
-- `--enable-scraping`: Enables the Scrapy data scraping step.
-- `--enable-venv-setup`: Enables environment setup to create and activate a virtual environment before running tests.
+### Networking
+- External network 'book-network' required
+- Services connect to shared PostgreSQL and MLflow instances
 
-### Test Workflow
+### Volumes
+- Data persistence through ./data volume mount
+- Shared access to models and processed data
 
-The `make-test.sh` script performs the following steps:
+## Running the Full Stack
 
-- **Setup**: Activates the virtual environment if specified by `--enable-venv-setup`.
-- **Start PostgreSQL**: Checks if the PostgreSQL container is running, and starts or creates it if needed.
-- **Database Verification**: Tests PostgreSQL connectivity and ensures the database is correctly initialized.
-- **Scraping**: Runs the Scrapy spider if `--enable-scraping` is specified.
-- **Data Processing and Loading**: Executes the compression, preparation, and loading steps.
-- **Data Verification**: Confirms data has been successfully loaded into the database by verifying table counts and content.
-- **Cleanup**: Stops and removes the PostgreSQL container and cleans up temporary data
+1. Start database and MLflow (external setup required)
+2. Run pipeline: `make pipeline`
+3. Start API: `make api`
+4. Start microservices: `make microservices`
 
-### Notes
-
-- Ensure Docker is installed and running as make-test.sh depends on Docker to manage the PostgreSQL container.
-- If using MLflow, ensure the necessary MLflow configuration is specified in `.env`. The server has to be started.
-
-This test script is intended for development and validation purposes, enabling you to quickly check the end-to-end functionality of the data pipeline.
+Use `make clean` for full cleanup when needed.

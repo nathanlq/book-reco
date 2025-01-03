@@ -6,7 +6,7 @@ pipeline:
 
 pipeline-with-scraping:
 	@echo "Running data pipeline with data refresh..."
-	REFRESH_DATA=true sudo docker compose -f docker-compose-pipeline.yml up -d
+	sudo -E REFRESH_DATA=true docker compose -f docker-compose-pipeline.yml up -d
 
 api:
 	@echo "Starting API service..."

@@ -5,8 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Chargement des configurations depuis .env
-mlflow_host = os.getenv('MLFLOW_HOST', 'localhost')
+mlflow_host = os.getenv('MLFLOW_HOST', '127.0.0.1/')
 mlflow_port = os.getenv('MLFLOW_PORT', '5000')
 mlflow_login = os.getenv('MLFLOW_LOGIN')
 mlflow_password = os.getenv('MLFLOW_PASSWORD')

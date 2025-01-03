@@ -5,6 +5,8 @@ networks:
 services:
   data-pipeline:
     env_file: ./.env
+    environment:
+      - REFRESH_DATA=${REFRESH_DATA}
     build: 
       context: .
       dockerfile: Dockerfile.pipeline

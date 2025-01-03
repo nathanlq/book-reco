@@ -12,5 +12,5 @@ mlflow_artifacts/
 outputs/
 mlruns.db
 **/basic_auth.db
-data/img/
 .env
+data/img/*.webp

@@ -56,6 +56,42 @@ async def table_exists(conn):
     result = await conn.fetchval(f"SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = '{TABLE_NAME}')")
     return result
 
+async def create_database_if_not_exists():
+    conn = await asyncpg.connect(
+        user=POSTGRES_USER,
+        password=POSTGRES_PASSWORD,
+        host=POSTGRES_HOST,
+        port=POSTGRES_PORT,
+        database="postgres"
+    )
+    
+    result = await conn.fetchval(f"SELECT 1 FROM pg_database WHERE datname = '{POSTGRES_DB}'")
+    if not result:
+        await conn.execute(f"CREATE DATABASE {POSTGRES_DB};")
+        print(f"Database {POSTGRES_DB} created.")
+    else:
+        print(f"Database {POSTGRES_DB} already exists.")
+    await conn.close()
+    
+    conn = await asyncpg.connect(
+        user=POSTGRES_USER,
+        password=POSTGRES_PASSWORD,
+        host=POSTGRES_HOST,
+        port=POSTGRES_PORT,
+        database=POSTGRES_DB
+    )
+    
+    extension_installed = await conn.fetchval("SELECT 1 FROM pg_available_extensions WHERE name = 'vector'")
+    if not extension_installed:
+        print("Extension 'vector' is not available on this server. Please install it on the PostgreSQL server.")
+    else:
+        extension_active = await conn.fetchval("SELECT 1 FROM pg_extension WHERE extname = 'vector'")
+        if not extension_active:
+            await conn.execute("CREATE EXTENSION IF NOT EXISTS vector;")
+            print("Extension 'vector' has been enabled.")
+        else:
+            print("Extension 'vector' is already enabled.")
+    await conn.close()
 
 async def create_table(conn):
     if not await table_exists(conn):
@@ -108,6 +144,8 @@ async def retrieve_data(conn):
 
 
 async def main(drop_flag=False):
+    await create_database_if_not_exists()
+
     conn = await asyncpg.connect(
         user=POSTGRES_USER,
         password=POSTGRES_PASSWORD,

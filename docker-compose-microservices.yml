@@ -1,0 +1,43 @@
+services:
+  api:
+    env_file: ./.env
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    ports:
+      - "9999:8000"
+
+  clustering-service:
+    env_file: ./.env
+    build:
+      context: .
+      dockerfile: Dockerfile.microservices
+    environment:
+      - SERVICE_NAME=clustering
+    volumes:
+      - ./data:/app/data
+
+  vectorizer-service:
+    env_file: ./.env
+    build:
+      context: .
+      dockerfile: Dockerfile.microservices
+    environment:
+      - SERVICE_NAME=vectorizer
+    volumes:
+      - ./data:/app/data
+
+  images-service:
+    env_file: ./.env
+    build:
+      context: .
+      dockerfile: Dockerfile.microservices
+    environment:
+      - SERVICE_NAME=images
+    volumes:
+      - ./data:/app/data
+
+networks:
+  book-network:
+    name: book-network
+    external: true

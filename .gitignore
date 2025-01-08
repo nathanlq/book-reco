@@ -1,0 +1,16 @@
+venv/
+**__pycache__/**
+data/*.parquet
+notebook/.ipynb_checkpoints/
+scripts/__pycache__/
+scripts/utils/__pycache__/
+**__pycache__/
+data/postgres/
+mlruns/
+mlartifacts/
+mlflow_artifacts/
+outputs/
+mlruns.db
+**/basic_auth.db
+.env
+data/img/*.webp

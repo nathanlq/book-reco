@@ -1,0 +1,7 @@
+data/img/*.webp
+data/*.parquet
+data/postgres
+venv/
+mlruns/
+ressources/
+notebook/

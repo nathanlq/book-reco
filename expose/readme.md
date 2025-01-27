@@ -1,6 +1,10 @@
-# Expose Module
+# API Documentation
+
+## Overview
 
 The `expose` module provides a REST API for managing and retrieving book data stored in PostgreSQL. Built with FastAPI, this module offers endpoints to search and filter books and find similar books based on various criteria. It consists of configuration, database connection management, data models, routing, and API logic.
+
+---
 
 ## File Structure
 
@@ -9,6 +13,8 @@ The `expose` module provides a REST API for managing and retrieving book data st
 - **main.py**: Initializes the FastAPI app and includes the router for handling API endpoints.
 - **models.py**: Defines the `Book` data model using Pydantic, representing the structure of book data.
 - **routes.py**: Contains API route definitions for book retrieval and similarity search.
+
+---
 
 ## Environment Variables
 
@@ -23,9 +29,13 @@ The `config.py` file loads the following environment variables:
 
 Ensure these variables are set in a `.env` file in the root directory.
 
+---
+
 ## Database Connection
 
 The `database.py` file provides the `get_db_connection()` function, which establishes an asynchronous connection to the PostgreSQL database. This function is used within `routes.py` to access the book data.
+
+---
 
 ## Data Models
 
@@ -39,9 +49,9 @@ The `models.py` file defines a `Book` model using Pydantic, representing the sch
 
 This model is used for validating and serializing data returned from the API.
 
-## API Routes
+---
 
-The `routes.py` file defines the following API endpoints:
+## API Routes
 
 ### 1. **GET** `/books`
 
@@ -58,6 +68,13 @@ Retrieves a list of books, with optional filtering and pagination parameters.
 
 This endpoint supports complex filtering by combining multiple criteria in a single request. Pagination is handled through `page` and `page_size`.
 
+**Example Usage:**
+```plaintext
+GET /books?page=1&page_size=10&author=John
+```
+
+---
+
 ### 2. **GET** `/books/{book_id}/similar`
 
 Finds books similar to the specified book ID based on content embeddings and optional filtering criteria.
@@ -68,8 +85,35 @@ Finds books similar to the specified book ID based on content embeddings and opt
 **Query Parameters**:
 - `method`: Method for similarity calculation (supports `cosine`, `euclidean`, and `taxicab`).
 - `author`, `collection`, `editeur`, `format`: Optional boolean filters to match similar books by specific metadata.
+- `fast`: Limit the search to books within the same dynamic cluster (if available).
 
 The similarity search uses embeddings stored in the `embedding` column, ranking results based on the selected method. By default, it uses cosine similarity but can also apply Euclidean or taxicab (Manhattan) distance.
+
+**Example Usage:**
+```plaintext
+GET /books/123/similar?method=cosine&author=true&fast=true
+```
+
+---
+
+### 3. **GET** `/books/{book_id}/image`
+
+Retrieves the image of a book using its unique identifier.
+
+**Path Parameter**:
+- `book_id`: The unique ID of the book whose image is being requested.
+
+**Functionality**:
+- Verifies if the image is already downloaded locally.
+- If not, it downloads the image from the associated URL and saves it locally.
+- Returns the image file if available, or raises a `404` error if the image cannot be found.
+
+**Example Usage:**
+```plaintext
+GET /books/123/image
+```
+
+---
 
 ## Usage
 
@@ -77,5 +121,6 @@ To start the `expose` module, run the FastAPI server in `main.py`. Make sure tha
 
 - PostgreSQL is running and accessible with the credentials provided in `.env`.
 - The database and table structure are prepared to support the module’s queries.
-  
+
 This module serves as a microservice for book data retrieval and analysis, supporting a scalable and asynchronous API.
+

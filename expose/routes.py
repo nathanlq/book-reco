@@ -1,10 +1,11 @@
 import aiohttp
 import os
 import json
+from datetime import datetime
 from fastapi import APIRouter, Query, HTTPException
 from typing import List, Optional
 from fastapi.responses import FileResponse
-from expose.models import Book
+from expose.models import Book, SearchRequest
 from expose.database import get_db_connection
 from expose.config import TABLE_NAME
 from microservices.images import generate_image_path, download_and_save_image_webp
@@ -235,3 +236,137 @@ async def get_book_image(book_id: str):
 
     await conn.close()
     return FileResponse(image_path)
+
+
+@router.post("/search", response_model=List[Book])
+async def search_books(search_request: SearchRequest):
+    conn = await get_db_connection()
+
+    conditions = []
+    params = []
+
+    if search_request.nb_de_pages:
+        if 'min' in search_request.nb_de_pages:
+            conditions.append(f"nb_de_pages >= ${len(params) + 1}")
+            params.append(search_request.nb_de_pages['min'])
+        if 'max' in search_request.nb_de_pages:
+            conditions.append(f"nb_de_pages <= ${len(params) + 1}")
+            params.append(search_request.nb_de_pages['max'])
+
+    if search_request.mot_clef:
+        keyword = search_request.mot_clef
+        keyword_for_author = keyword.replace(" ", "_")
+
+        keyword_conditions = [
+            f"product_title LIKE ${len(params) + 1}",
+            f"author LIKE ${len(params) + 2}",
+            f"resume LIKE ${len(params) + 1}"
+        ]
+        
+        params.append(f"%{keyword}%")
+        params.append(f"%{keyword_for_author}%")
+
+        conditions.append(f"({' OR '.join(keyword_conditions)})")
+
+    if search_request.collections:
+        conditions.append(f"collection = ANY(${len(params) + 1})")
+        params.append(search_request.collections)
+
+    if search_request.date_de_parution:
+        if 'après' in search_request.date_de_parution:
+            try:
+                after_date = datetime.strptime(
+                    search_request.date_de_parution['après'], '%d:%m:%Y')
+                conditions.append(f"date_de_parution >= ${len(params) + 1}")
+                params.append(after_date.date())
+            except ValueError:
+                raise HTTPException(
+                    status_code=400, detail="Invalid 'après' date format")
+
+        if 'avant' in search_request.date_de_parution:
+            try:
+                before_date = datetime.strptime(
+                    search_request.date_de_parution['avant'], '%d:%m:%Y')
+                conditions.append(f"date_de_parution <= ${len(params) + 1}")
+                params.append(after_date.date())
+            except ValueError:
+                raise HTTPException(
+                    status_code=400, detail="Invalid 'avant' date format")
+
+    query = f"SELECT * FROM {TABLE_NAME}"
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
+    rows = await conn.fetch(query, *params)
+
+    books = []
+    for row in rows:
+        book_data = {
+            "id": row['id'],
+            "product_title": row.get('product_title'),
+            "author": row.get('author'),
+            "resume": row.get('resume'),
+            "image_url": row.get('image_url'),
+            "collection": row.get('collection'),
+            "date_de_parution": str(row['date_de_parution']) if row.get('date_de_parution') is not None else '',
+            "ean": row.get('ean'),
+            "editeur": row.get('editeur'),
+            "format": row.get('format'),
+            "isbn": row.get('isbn'),
+            "nb_de_pages": row.get('nb_de_pages'),
+            "poids": float(row['poids']) if row.get('poids') is not None and -1e308 < float(row['poids']) < 1e308 else None,
+            "presentation": row.get('presentation'),
+            "width": float(row['width']) if row.get('width') is not None and -1e308 < float(row['width']) < 1e308 else None,
+            "height": float(row['height']) if row.get('height') is not None and -1e308 < float(row['height']) < 1e308 else None,
+            "depth": float(row['depth']) if row.get('depth') is not None and -1e308 < float(row['depth']) < 1e308 else None,
+        }
+        books.append(book_data)
+
+    await conn.close()
+    return books
+
+
+@router.get("/collections", response_model=List[str])
+async def get_collections():
+    conn = await get_db_connection()
+
+    query = f"SELECT DISTINCT collection FROM {TABLE_NAME} WHERE collection IS NOT NULL"
+    rows = await conn.fetch(query)
+
+    collections = [row['collection'] for row in rows]
+
+    await conn.close()
+    return collections
+
+
+@router.get("/book/{book_id}", response_model=Book)
+async def get_book(book_id: str):
+    conn = await get_db_connection()
+
+    query = f"SELECT * FROM {TABLE_NAME} WHERE id = $1"
+    row = await conn.fetchrow(query, book_id)
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Book not found")
+
+    book_data = {
+        "id": row['id'],
+        "product_title": row.get('product_title'),
+        "author": row.get('author'),
+        "resume": row.get('resume'),
+        "image_url": row.get('image_url'),
+        "collection": row.get('collection'),
+        "date_de_parution": str(row['date_de_parution']) if row.get('date_de_parution') is not None else '',
+        "ean": row.get('ean'),
+        "editeur": row.get('editeur'),
+        "format": row.get('format'),
+        "isbn": row.get('isbn'),
+        "nb_de_pages": row.get('nb_de_pages'),
+        "poids": float(row['poids']) if row.get('poids') is not None and -1e308 < float(row['poids']) < 1e308 else None,
+        "presentation": row.get('presentation'),
+        "width": float(row['width']) if row.get('width') is not None and -1e308 < float(row['width']) < 1e308 else None,
+        "height": float(row['height']) if row.get('height') is not None and -1e308 < float(row['height']) < 1e308 else None,
+        "depth": float(row['depth']) if row.get('depth') is not None and -1e308 < float(row['depth']) < 1e308 else None,
+    }
+
+    await conn.close()
+    return book_data

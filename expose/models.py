@@ -1,6 +1,5 @@
 from pydantic import BaseModel
-from typing import List, Optional
-
+from typing import List, Optional, Dict, Union
 
 class Book(BaseModel):
     id: Optional[str] = None
@@ -20,3 +19,9 @@ class Book(BaseModel):
     width: Optional[float] = None
     height: Optional[float] = None
     depth: Optional[float] = None
+
+class SearchRequest(BaseModel):
+    nb_de_pages: Optional[Dict[str, int]] = None
+    mot_clef: Optional[str] = None
+    collections: Optional[List[str]] = None
+    date_de_parution: Optional[Dict[str, str]] = None

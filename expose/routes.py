@@ -296,6 +296,7 @@ async def search_books(search_request: SearchRequest):
     query = f"SELECT * FROM {TABLE_NAME}"
     if conditions:
         query += " WHERE " + " AND ".join(conditions)
+    query += " LIMIT 100"
     rows = await conn.fetch(query, *params)
 
     books = []

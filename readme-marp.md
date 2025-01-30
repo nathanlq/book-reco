@@ -13,6 +13,14 @@ Icher Paul-Henri
 
 ---
 
+# Qu'est-ce que c'est
+
+- Pourquoi ça existe (quel besoin ça couvre)
+- Pourquoi c'est génial
+- Comment ça se met à jour (chargement et microservices qui vectorisent et garde les cluster et les embeddings à jour selon l'ensemble)
+
+---
+
 ## Table des Matières
 
 1. Introduction
@@ -22,6 +30,7 @@ Icher Paul-Henri
 5. Module expose
 6. Front-end
 7. Démo
+
 
 ---
 
@@ -145,3 +154,7 @@ Icher Paul-Henri
 ---
 
 # Code
+
+-> Code des réentrainement périodique
+-> cron de la pipeline de chargement
+-> makefile qui rchestre tout

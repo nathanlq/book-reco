@@ -16,11 +16,12 @@ Icher Paul-Henri
 ## Table des Matières
 
 1. Introduction
-2. Module `collect`
-3. Module `store`
-4. Module `microservices`
-5. Module `expose`
-6. Démo
+2. Module collect
+3. Module store
+4. Module microservices
+5. Module expose
+6. Front-end
+7. Démo
 
 ---
 
@@ -42,7 +43,7 @@ Icher Paul-Henri
 
 ---
 
-# Module `collect`
+# Module collect
 
 - Récupère la donnée de façon asynchrone, framework scrapy.
 - Exploration minimisée en gérant la profondeur d'exploration et la pagination.
@@ -51,7 +52,7 @@ Icher Paul-Henri
 
 ---
 
-# Module `store`
+# Module store
 
 - Traite la donnée brute (nettoyage, normalisation et organisation des champs).
 - Initialisation et configuration de la base (si besoin, sinon gère les mises à jour de schéma).
@@ -60,7 +61,7 @@ Icher Paul-Henri
 
 ---
 
-# Module `microservices`
+# Module microservices
 
 - Enrichit et fige la donnée :
   - Génération de vecteurs Embedings (avec CamemBERT) pour de la reco sémantique.
@@ -71,37 +72,67 @@ Icher Paul-Henri
 
 ---
 
-# Module `expose`
+# Module expose
 
 - API Fast-API.
-- Requete de recherche (filtrage sur des champs).
+- Requete de recherche GET (filtrage sur des champs).
 - Requete de recommandation (à partir d'un id).
 - Requete de récupération d'image (à partir d'un id).
+- Requete pour récupérer l'ensemble des collections.
+- Requete pour récupérer les infos d'un livre.
+- Requete de recherche POST des livres (car le GET était mal fait). 
 
 ---
 
-### 1. **GET** `/books`
+### 1. **GET** /books
 
 - Récupère une liste de livres avec des paramètres de filtrage et de pagination.
 - **Paramètres de requête** :
   - Filtrage par ID, titre, auteur, éditeur, etc.
-  - Pagination avec `page` et `page_size`.
+  - Pagination avec page et page_size.
 
 ---
 
-### 2. **GET** `/books/{book_id}/similar`
+### 2. **GET** /books/{book_id}/similar
 
 - Trouve des livres similaires en se basant sur des embeddings et des critères facultatifs.
 - **Paramètres** :
-  - Méthodes de similarité : `cosine`, `euclidean`, `taxicab`.
+  - Méthodes de similarité : cosine, euclidean, taxicab.
   - Filtres facultatifs : auteur, collection, éditeur, etc.
 
 ---
 
-### 3. **GET** `/books/{book_id}/image`
+### 3. **GET** /books/{book_id}/image
 
 - Récupère l'image d'un livre.
 - Vérifie si l'image est téléchargée localement, sinon elle est téléchargée depuis l'URL associée.
+
+---
+
+### 4. **GET** /collections
+
+- Récupère la liste de toutes les collections de livres distinctes.
+- Retourne un tableau de noms de collections.
+
+---
+
+### 5. **GET** /book/{book_id}
+
+- Récupère les détails complets d'un livre spécifique.
+- **Paramètres** :
+  - book_id : Identifiant unique du livre.
+- Retourne toutes les informations détaillées du livre.
+
+---
+
+### 6. **POST** /search
+
+- Recherche avancée de livres avec plusieurs critères.
+- **Critères de recherche** :
+  - nb_de_pages : Intervalle min/max
+  - mot_clef : Recherche dans titre, auteur et résumé
+  - collections : Liste de collections
+  - date_de_parution : Intervalle avant/après
 
 ---
 
@@ -113,4 +144,4 @@ Icher Paul-Henri
 
 ---
 
-# Code ?
+# Code

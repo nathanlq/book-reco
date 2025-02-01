@@ -155,6 +155,7 @@ Icher Paul-Henri
 
 # Code
 
--> Code des réentrainement périodique
--> cron de la pipeline de chargement
--> makefile qui rchestre tout
+- Code des ré-entrainement périodique
+- Cron de la pipeline de chargement
+- Makefile qui orchestre tout
+- Mlflow qui surveille les chargements et les microservices

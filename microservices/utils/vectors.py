@@ -14,13 +14,17 @@ MODEL_DIR = 'data/models'
 PCA_MODEL_PATH = os.path.join(MODEL_DIR, 'pca_model.joblib')
 TFIDF_MODEL_PATH = os.path.join(MODEL_DIR, 'tfidf_vectorizer.joblib')
 STOP_WORDS_PATH = 'data/stop_words_french.txt'
+FINETUNED_MODEL_DIR = os.path.join(MODEL_DIR, 'finetuned-camembert')
 
 with open(STOP_WORDS_PATH, 'r', encoding='utf-8') as file:
     french_stop_words = [line.strip() for line in file]
 
+model_path = FINETUNED_MODEL_DIR if os.path.exists(FINETUNED_MODEL_DIR) else 'camembert-base'
 model_name = 'camembert-base'
 tokenizer = CamembertTokenizer.from_pretrained(model_name)
-model = CamembertModel.from_pretrained(model_name)
+model = CamembertModel.from_pretrained(model_path)
+
+print(f"Modèle : {model_path}")
 
 pca = PCA(n_components=128)
 tfidf_vectorizer = TfidfVectorizer(

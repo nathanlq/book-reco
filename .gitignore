@@ -14,3 +14,4 @@ mlruns.db
 **/basic_auth.db
 .env
 data/img/*.webp
+lightning_logs/

@@ -78,7 +78,7 @@ class FinetunedCamemBERT(pl.LightningModule):
         embeddings = outputs.last_hidden_state[:, 0]
         return self.projection(embeddings)
     
-    def training_step(self, batch, batch_idx):
+    def _compute_loss(self, batch):
         embeddings = self(batch['input_ids'], batch['attention_mask'])
         
         similarity = torch.matmul(embeddings, embeddings.T)
@@ -93,13 +93,21 @@ class FinetunedCamemBERT(pl.LightningModule):
         
         positive_pairs = torch.sum(exp_sim * label_similarity * (1 - mask), dim=1)
         all_pairs = torch.sum(exp_sim * (1 - mask), dim=1)
-        loss = -torch.log(positive_pairs / all_pairs).mean()
-        
+        return -torch.log(positive_pairs / all_pairs).mean()
+    
+    def training_step(self, batch, batch_idx):
+        loss = self._compute_loss(batch)
         self.log('train_loss', loss)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        loss = self._compute_loss(batch)
+        self.log('val_loss', loss, prog_bar=True)
         return loss
 
     def configure_optimizers(self):
         return torch.optim.AdamW(self.parameters(), lr=self.learning_rate)
+
     
 async def get_training_data():
     conn = await reconnect()

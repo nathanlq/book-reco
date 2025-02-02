@@ -4,7 +4,10 @@ from expose.routes import router
 
 app = FastAPI()
 
-origins = ["*"]
+origins = [
+    "https://api.bookfarm.spacesheep.ovh",
+    "https://app.bookfarm.spacesheep.ovh"
+]
 
 app.add_middleware(
     CORSMiddleware,

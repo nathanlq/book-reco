@@ -274,24 +274,11 @@ async def search_books(search_request: SearchRequest):
 
     if search_request.date_de_parution:
         if 'après' in search_request.date_de_parution:
-            try:
-                after_date = datetime.strptime(
-                    search_request.date_de_parution['après'], '%d:%m:%Y')
-                conditions.append(f"date_de_parution >= ${len(params) + 1}")
-                params.append(after_date.date())
-            except ValueError:
-                raise HTTPException(
-                    status_code=400, detail="Invalid 'après' date format")
-
+            conditions.append(f"EXTRACT(YEAR FROM date_de_parution) >= ${len(params) + 1}")
+            params.append(search_request.date_de_parution['après'])
         if 'avant' in search_request.date_de_parution:
-            try:
-                before_date = datetime.strptime(
-                    search_request.date_de_parution['avant'], '%d:%m:%Y')
-                conditions.append(f"date_de_parution <= ${len(params) + 1}")
-                params.append(after_date.date())
-            except ValueError:
-                raise HTTPException(
-                    status_code=400, detail="Invalid 'avant' date format")
+            conditions.append(f"EXTRACT(YEAR FROM date_de_parution) <= ${len(params) + 1}")
+            params.append(search_request.date_de_parution['avant'])
 
     query = f"SELECT * FROM {TABLE_NAME}"
     if conditions:

@@ -62,8 +62,11 @@ class FinetunedCamemBERT(pl.LightningModule):
         self.bert = CamembertModel.from_pretrained('camembert-base')
         self.projection = nn.Sequential(
             nn.Linear(768, 768),
+            nn.LayerNorm(768),  # Ajout d'une normalisation
             nn.ReLU(),
-            nn.Linear(768, 128)  # Projection dans un espace de dimension 128
+            nn.Dropout(0.1),    # Ajout d'un dropout
+            nn.Linear(768, 128),
+            nn.LayerNorm(128)   # Normalisation finale
         )
         
         # Freeze first 8 layers
@@ -76,28 +79,54 @@ class FinetunedCamemBERT(pl.LightningModule):
     def forward(self, input_ids, attention_mask):
         outputs = self.bert(input_ids, attention_mask=attention_mask)
         embeddings = outputs.last_hidden_state[:, 0]
-        return self.projection(embeddings)
+        projected = self.projection(embeddings)
+        # Normalisation L2 pour garantir des vecteurs unitaires
+        return torch.nn.functional.normalize(projected, p=2, dim=1)
     
     def _compute_loss(self, batch):
         embeddings = self(batch['input_ids'], batch['attention_mask'])
         
+        # Calcul de similarité cosinus (produit scalaire de vecteurs normalisés)
         similarity = torch.matmul(embeddings, embeddings.T)
         
         labels = batch['labels']
         label_similarity = torch.matmul(labels, labels.T) > 0
         
-        temperature = 0.1
-        exp_sim = torch.exp(similarity / temperature)
+        # Temperature plus élevée pour plus de stabilité
+        temperature = 0.25
+        
+        # Clip pour éviter les explosions numériques
+        similarity_scaled = torch.clamp(similarity / temperature, min=-20, max=20)
+        exp_sim = torch.exp(similarity_scaled)
         
         mask = torch.eye(len(embeddings), device=embeddings.device)
         
         positive_pairs = torch.sum(exp_sim * label_similarity * (1 - mask), dim=1)
         all_pairs = torch.sum(exp_sim * (1 - mask), dim=1)
-        return -torch.log(positive_pairs / all_pairs).mean()
-    
+        
+        # Ajout d'un epsilon pour éviter la division par zéro
+        eps = 1e-8
+        loss = -torch.log((positive_pairs + eps) / (all_pairs + eps)).mean()
+        
+        # Vérification de NaN dans la loss
+        if torch.isnan(loss):
+            print("Warning: NaN detected in loss calculation")
+            print(f"Similarity stats: min={similarity.min()}, max={similarity.max()}")
+            print(f"Exp_sim stats: min={exp_sim.min()}, max={exp_sim.max()}")
+            print(f"Positive pairs: {positive_pairs}")
+            print(f"All pairs: {all_pairs}")
+            # Retourner une perte alternative en cas de NaN
+            return torch.tensor(10.0, device=loss.device, requires_grad=True)
+            
+        return loss
+
     def training_step(self, batch, batch_idx):
         loss = self._compute_loss(batch)
         self.log('train_loss', loss)
+        # Ajout de logs pour le monitoring
+        if batch_idx % 100 == 0:
+            embeddings = self(batch['input_ids'], batch['attention_mask'])
+            self.log('embedding_norm', torch.norm(embeddings[0]))
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -106,8 +135,15 @@ class FinetunedCamemBERT(pl.LightningModule):
         return loss
 
     def configure_optimizers(self):
-        return torch.optim.AdamW(self.parameters(), lr=self.learning_rate)
-
+        optimizer = torch.optim.AdamW(self.parameters(), lr=self.learning_rate)
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer, mode='min', factor=0.5, patience=2, verbose=True
+        )
+        return {
+            'optimizer': optimizer,
+            'lr_scheduler': scheduler,
+            'monitor': 'val_loss'
+        }
     
 async def get_training_data():
     conn = await reconnect()
@@ -124,11 +160,11 @@ async def get_training_data():
     return texts, labels
 
 async def main():
+    torch.set_float32_matmul_precision('high')
     BATCH_SIZE = 32
     NUM_EPOCHS = 10
     
     texts, labels = await get_training_data()
-    print(labels)
     
     tokenizer = CamembertTokenizer.from_pretrained('camembert-base')
     train_size = int(0.8 * len(texts))
@@ -147,8 +183,8 @@ async def main():
         tokenizer
     )
     
-    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE)
+    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=11)
+    val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, num_workers=11)
 
     callbacks = [
         ModelCheckpoint(

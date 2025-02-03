@@ -20,6 +20,7 @@ with open(STOP_WORDS_PATH, 'r', encoding='utf-8') as file:
     french_stop_words = [line.strip() for line in file]
 
 model_path = FINETUNED_MODEL_DIR if os.path.exists(FINETUNED_MODEL_DIR) else 'camembert-base'
+# model_path = 'camembert-base'
 model_name = 'camembert-base'
 tokenizer = CamembertTokenizer.from_pretrained(model_name)
 model = CamembertModel.from_pretrained(model_path)
@@ -136,13 +137,16 @@ async def initialize_tfidf_model(conn, table_name):
         mlflow.log_param("start_time", start_time)
         mlflow.log_param("end_time", end_time)
 
-
 def get_embedding(text, max_length=512, apply_pca=True):
     inputs = tokenizer(text, return_tensors='pt',
-                       truncation=True, padding=True, max_length=max_length)
+                      truncation=True, padding=True, max_length=max_length)
     with torch.no_grad():
         outputs = model(**inputs)
     embedding = outputs.last_hidden_state[:, 0, :].numpy()
+
+    if np.isnan(embedding).any():
+        print(f"Warning: NaN detected in embedding for text: {text[:100]}...")
+        embedding = np.nan_to_num(embedding, nan=0.0)
 
     if apply_pca:
         if not hasattr(pca, 'components_'):
@@ -153,11 +157,22 @@ def get_embedding(text, max_length=512, apply_pca=True):
             raise ValueError(
                 f"Expected embedding size of 768, got {embedding.shape[1]}")
 
-        reduced_embedding = pca.transform(embedding)
-        return reduced_embedding.flatten()
+        if np.isnan(embedding).any():
+            raise ValueError("NaN values still present after cleaning")
+
+        try:
+            reduced_embedding = pca.transform(embedding)
+            if np.isnan(reduced_embedding).any():
+                print("Warning: NaN values detected after PCA transformation")
+                reduced_embedding = np.nan_to_num(reduced_embedding, nan=0.0)
+            return reduced_embedding.flatten()
+        except Exception as e:
+            print(f"Error during PCA transformation: {str(e)}")
+            print(f"Embedding shape: {embedding.shape}")
+            print(f"Embedding stats - min: {np.min(embedding)}, max: {np.max(embedding)}")
+            raise
 
     return embedding.flatten()
-
 
 def generate_tfidf_vector(column):
     if not hasattr(tfidf_vectorizer, 'vocabulary_'):

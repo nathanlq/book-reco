@@ -1,3 +1,5 @@
+> **Ce repo est heberge sur [Codeberg](https://codeberg.org/nathanlq/book-reco).** Le miroir GitHub est en lecture seule.
+
 ## Project Documentation
 
 ### 1. Project Overview
